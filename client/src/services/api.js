@@ -1,4 +1,4 @@
-import axios from "axios";
+﻿import axios from "axios";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL ?? "/api",
@@ -33,6 +33,16 @@ export async function updateCompany(slug, payload) {
 
 export async function fetchCareerPageEditor(slug) {
   const response = await api.get(`/companies/${slug}/career-page`);
+  return response.data;
+}
+
+export async function updateCareerPageDraft(slug, payload) {
+  const response = await api.patch(`/companies/${slug}/career-page`, payload);
+  return response.data;
+}
+
+export async function publishCareerPage(slug) {
+  const response = await api.post(`/companies/${slug}/career-page/publish`);
   return response.data;
 }
 

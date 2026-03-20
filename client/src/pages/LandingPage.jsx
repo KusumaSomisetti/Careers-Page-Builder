@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import AppShell from "../components/dashboard/AppShell";
 import BrandMark from "../components/BrandMark";
 import { fetchCompanies, fetchJobs, getErrorMessage } from "../services/api";
@@ -26,12 +26,12 @@ function CompanyCard({ company, openRoles, onSelect }) {
     <button
       type="button"
       onClick={() => onSelect(company.slug)}
-      className="min-w-[228px] rounded-[26px] border border-slate-200/90 bg-white p-5 text-left shadow-[0_12px_36px_rgba(15,23,42,0.08)] transition hover:-translate-y-1 hover:shadow-[0_18px_50px_rgba(15,23,42,0.12)]"
+      className="w-[260px] shrink-0 rounded-[26px] border border-slate-200/90 bg-white p-5 text-left shadow-[0_12px_36px_rgba(15,23,42,0.08)] transition hover:-translate-y-1 hover:shadow-[0_18px_50px_rgba(15,23,42,0.12)] sm:w-[300px] lg:w-[340px]"
     >
-      <div className="mb-5 flex h-32 items-center justify-center rounded-[18px] bg-[linear-gradient(180deg,#eef2f7_0%,#e2e8f0_100%)] text-slate-400 shadow-inner">
+      <div className="mb-5 flex h-32 items-center justify-center rounded-[18px] bg-[linear-gradient(180deg,#eef2f7_0%,#e2e8f0_100%)] text-slate-400 shadow-inner sm:h-36 lg:h-40">
         <BrandMark />
       </div>
-      <p className="text-[1.9rem] font-semibold tracking-tight text-slate-950">{company.name}</p>
+      <p className="text-[1.7rem] font-semibold tracking-tight text-slate-950 sm:text-[1.9rem]">{company.name}</p>
       <p className="mt-1 text-[1.1rem] text-slate-700">{openRoles} Open Roles</p>
     </button>
   );
@@ -42,7 +42,7 @@ function JobResultCard({ job }) {
     <article className="rounded-[26px] border border-slate-200/80 bg-white p-5 shadow-[0_12px_36px_rgba(15,23,42,0.06)]">
       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">{job.company?.name || "Company"}</p>
       <h3 className="mt-3 text-xl font-semibold tracking-tight text-slate-950">{job.title}</h3>
-      <p className="mt-2 text-sm text-slate-500">{job.location} � {job.type}</p>
+      <p className="mt-2 text-sm text-slate-500">{job.location} • {job.type}</p>
       <p className="mt-3 text-sm leading-7 text-slate-600">{job.summary}</p>
     </article>
   );
@@ -130,33 +130,32 @@ export default function LandingPage({ onRecruiterLogin }) {
 
   return (
     <AppShell>
-      <main className="mx-auto min-h-screen max-w-7xl px-6 pb-16 pt-8 sm:px-8 sm:pt-10 lg:px-10 lg:pb-20">
-        <header className="flex items-start justify-between gap-4">
+      <main className="mx-auto min-h-screen max-w-[92rem] overflow-x-clip px-4 pb-14 pt-6 sm:px-6 sm:pt-8 lg:px-8 lg:pb-16">
+        <header className="flex flex-wrap items-start justify-between gap-4 sm:flex-nowrap sm:items-center">
           <div className="flex items-center gap-4 sm:gap-5">
             <BrandMark />
             <div className="leading-[0.9] tracking-tight text-slate-950">
-              <p className="text-[1.85rem] font-semibold sm:text-[2.1rem]">HIREPOINT</p>
-              <p className="text-[1.85rem] font-semibold sm:text-[2.1rem]">CAREERS</p>
+              <p className="text-[1.7rem] font-semibold sm:text-[2rem]">HIREPOINT</p>
             </div>
           </div>
 
           <button
             type="button"
             onClick={() => onRecruiterLogin()}
-            className="inline-flex items-center gap-3 rounded-[18px] bg-[linear-gradient(180deg,rgba(241,245,249,0.95),rgba(226,232,240,0.95))] px-4 py-3 text-base font-medium text-slate-800 shadow-[0_10px_28px_rgba(15,23,42,0.08)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_36px_rgba(15,23,42,0.12)] sm:px-6 sm:py-4 sm:text-[1.1rem]"
+            className="inline-flex w-full items-center justify-center gap-3 rounded-[18px] bg-[linear-gradient(180deg,rgba(241,245,249,0.95),rgba(226,232,240,0.95))] px-4 py-3 text-base font-medium text-slate-800 shadow-[0_10px_28px_rgba(15,23,42,0.08)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_36px_rgba(15,23,42,0.12)] sm:w-auto sm:px-5 sm:py-3.5 sm:text-[1rem] lg:px-6 lg:text-[1.05rem]"
           >
             <LockIcon />
             <span className="whitespace-nowrap">Recruiter Login</span>
           </button>
         </header>
 
-        <section className="pt-24 sm:pt-28 lg:grid lg:grid-cols-[1.1fr_0.9fr] lg:items-start lg:gap-12 lg:pt-24">
-          <div>
-            <h1 className="max-w-[7ch] text-[4.2rem] font-semibold leading-[0.95] tracking-[-0.05em] text-slate-950 sm:max-w-[8ch] sm:text-[5.6rem] lg:text-[6.3rem]">
+        <section className="pt-12 sm:pt-14 lg:grid lg:grid-cols-[1.08fr_0.92fr] lg:items-start lg:gap-8 lg:pt-14 xl:gap-12">
+          <div className="max-w-4xl">
+            <h1 className="max-w-[10ch] text-[3.2rem] font-semibold leading-[0.95] tracking-[-0.05em] text-slate-950 sm:max-w-[12ch] sm:text-[4.4rem] lg:max-w-none lg:whitespace-nowrap lg:text-[4.8rem] xl:text-[5.4rem]">
               Find your next chapter.
             </h1>
 
-            <div className="mt-10 rounded-[24px] border-[4px] border-slate-400/75 bg-white/90 px-5 py-5 shadow-[0_12px_36px_rgba(15,23,42,0.06)] sm:px-6 sm:py-6">
+            <div className="mt-7 rounded-[24px] border-[4px] border-slate-400/75 bg-white/90 px-4 py-4 shadow-[0_12px_36px_rgba(15,23,42,0.06)] sm:px-6 sm:py-5">
               <label className="flex items-center gap-4 sm:gap-5">
                 <SearchIcon />
                 <input
@@ -164,30 +163,30 @@ export default function LandingPage({ onRecruiterLogin }) {
                   value={searchValue}
                   onChange={(event) => setSearchValue(event.target.value)}
                   placeholder="Search jobs, keywords, or companies..."
-                  className="min-w-0 flex-1 bg-transparent text-[1.55rem] leading-tight text-slate-600 outline-none placeholder:text-slate-500 sm:text-[1.9rem]"
+                  className="min-w-0 flex-1 bg-transparent text-[1.2rem] leading-tight text-slate-600 outline-none placeholder:text-slate-500 sm:text-[1.55rem] lg:text-[1.75rem]"
                 />
               </label>
             </div>
 
-            <div className="mt-8 grid gap-4 sm:grid-cols-2">
+            <div className="mt-6 grid gap-3 sm:grid-cols-2 sm:gap-4">
               <a
                 href="#roles"
-                className="inline-flex items-center justify-center rounded-full bg-[linear-gradient(180deg,#9aa5af_0%,#7d8893_100%)] px-7 py-4 text-[1.1rem] font-medium text-white shadow-[0_12px_30px_rgba(100,116,139,0.28)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(100,116,139,0.34)]"
+                className="inline-flex items-center justify-center rounded-full bg-[linear-gradient(180deg,#9aa5af_0%,#7d8893_100%)] px-6 py-3.5 text-[1rem] font-medium text-white shadow-[0_12px_30px_rgba(100,116,139,0.28)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(100,116,139,0.34)] sm:px-7 sm:py-4 sm:text-[1.05rem]"
               >
                 Browse All Jobs
               </a>
               <a
                 href="#companies"
-                className="inline-flex items-center justify-center rounded-full bg-[linear-gradient(180deg,#9aa5af_0%,#7d8893_100%)] px-7 py-4 text-[1.1rem] font-medium text-white shadow-[0_12px_30px_rgba(100,116,139,0.28)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(100,116,139,0.34)]"
+                className="inline-flex items-center justify-center rounded-full bg-[linear-gradient(180deg,#9aa5af_0%,#7d8893_100%)] px-6 py-3.5 text-[1rem] font-medium text-white shadow-[0_12px_30px_rgba(100,116,139,0.28)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(100,116,139,0.34)] sm:px-7 sm:py-4 sm:text-[1.05rem]"
               >
                 Explore Companies
               </a>
             </div>
           </div>
 
-          <div className="mt-16 rounded-[32px] border border-white/80 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.96),_rgba(226,232,240,0.68))] p-6 shadow-[0_20px_60px_rgba(15,23,42,0.08)] lg:mt-3">
+          <div className="mt-8 rounded-[32px] border border-white/80 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.96),_rgba(226,232,240,0.68))] p-5 shadow-[0_20px_60px_rgba(15,23,42,0.08)] sm:p-6 lg:mt-1">
             <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-400">HirePoint Snapshot</p>
-            <div className="mt-5 grid grid-cols-2 gap-4">
+            <div className="mt-4 grid grid-cols-2 gap-4">
               <div className="rounded-[24px] bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.05)]">
                 <p className="text-3xl font-semibold tracking-tight text-slate-950">{companies.length}</p>
                 <p className="mt-2 text-sm text-slate-500">Featured companies</p>
@@ -197,7 +196,7 @@ export default function LandingPage({ onRecruiterLogin }) {
                 <p className="mt-2 text-sm text-slate-500">Live roles</p>
               </div>
             </div>
-            <p className="mt-5 text-sm leading-7 text-slate-600">
+            <p className="mt-4 text-sm leading-7 text-slate-600">
               Explore curated career experiences, search roles across top software teams, and jump into the recruiter workspace when you need to edit content.
             </p>
           </div>
@@ -209,10 +208,10 @@ export default function LandingPage({ onRecruiterLogin }) {
           </div>
         ) : null}
 
-        <section id="companies" className="pt-24 sm:pt-28">
+        <section id="companies" className="pt-14 sm:pt-16">
           <div className="flex items-end justify-between gap-4">
             <div>
-              <h2 className="text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl">
+              <h2 className="text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl lg:text-[3.2rem]">
                 Featured Companies
               </h2>
               <p className="mt-3 text-base text-slate-500 sm:text-lg">
@@ -226,7 +225,7 @@ export default function LandingPage({ onRecruiterLogin }) {
               Loading featured companies...
             </div>
           ) : filteredCompanies.length > 0 ? (
-            <div className="mt-8 flex snap-x gap-5 overflow-x-auto pb-3 lg:grid lg:grid-cols-3 lg:overflow-visible lg:pb-0">
+            <div className="hide-scrollbar mt-8 flex snap-x gap-5 overflow-x-auto pb-3">
               {filteredCompanies.slice(0, 6).map((company) => (
                 <div key={company.slug} className="snap-start">
                   <CompanyCard
@@ -244,9 +243,9 @@ export default function LandingPage({ onRecruiterLogin }) {
           )}
         </section>
 
-        <section id="roles" className="pt-20 sm:pt-24">
+        <section id="roles" className="pt-14 sm:pt-16">
           <div>
-            <h2 className="text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl">
+            <h2 className="text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl lg:text-[3.2rem]">
               Browse Roles
             </h2>
             <p className="mt-3 text-base text-slate-500 sm:text-lg">
@@ -274,3 +273,4 @@ export default function LandingPage({ onRecruiterLogin }) {
     </AppShell>
   );
 }
+
