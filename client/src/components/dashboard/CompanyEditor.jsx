@@ -13,9 +13,20 @@ function InputField({ label, value, onChange, placeholder }) {
   );
 }
 
-export default function CompanyEditor({ company, onChange }) {
+export default function CompanyEditor({ company, selectedSlug, onChange }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2">
+      <div className="sm:col-span-2">
+        <label className="block space-y-2">
+          <span className="text-sm font-medium text-slate-700">Company slug</span>
+          <input
+            type="text"
+            value={selectedSlug || "Not created yet"}
+            readOnly
+            className="w-full rounded-2xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-500 outline-none"
+          />
+        </label>
+      </div>
       <InputField
         label="Company name"
         value={company.name}

@@ -2,11 +2,11 @@ import crypto from "node:crypto";
 import path from "node:path";
 import process from "node:process";
 import ExcelJS from "exceljs";
-import { supabase } from "../src/lib/supabase.js";
 import { sampleCompanies } from "../src/data/sampleCompanies.js";
+import { createCompany, getCompanyBySlug } from "../src/services/companyService.js";
+import { addJob, getJobs } from "../src/services/jobService.js";
 
 const defaultFilePath = process.argv[2] || "C:/Users/KUSUMA/Downloads/Sample Jobs Data.xlsx";
-const UPSERT_BATCH_SIZE = 50;
 
 function slugify(value) {
   return String(value || "")
@@ -46,17 +46,22 @@ function createJobSlug(row, rowNumber) {
   return generated.length > 0 ? generated : `imported-job-${rowNumber}`;
 }
 
-async function upsertCompanies() {
-  const { data, error } = await supabase
-    .from("companies")
-    .upsert(sampleCompanies, { onConflict: "slug" })
-    .select("id, name, slug");
+async function ensureCompanies() {
+  const companies = [];
 
-  if (error) {
-    throw error;
+  for (const company of sampleCompanies) {
+    try {
+      companies.push(await createCompany(company));
+    } catch (error) {
+      if (error.status === 409) {
+        companies.push(await getCompanyBySlug(company.slug));
+      } else {
+        throw error;
+      }
+    }
   }
 
-  return new Map(data.map((company) => [company.slug, company]));
+  return new Map(companies.map((company) => [company.slug, company]));
 }
 
 async function readRows(filePath) {
@@ -97,19 +102,19 @@ function buildJobPayloads(rows, companiesBySlug) {
     }
 
     uniqueJobs.set(uniqueKey, {
-      company_id: company.id,
+      companyId: company.id,
       title: row.title,
       location: row.location,
       type: row.employment_type,
       summary: createSummary(row),
-      work_policy: row.work_policy,
+      workPolicy: row.work_policy,
       department: row.department,
-      employment_type: row.employment_type,
-      experience_level: row.experience_level,
-      job_type: row.job_type,
-      salary_range: row.salary_range,
-      job_slug: normalizedSlug,
-      posted_days_ago: normalizeDaysAgo(row.posted_days_ago)
+      employmentType: row.employment_type,
+      experienceLevel: row.experience_level,
+      jobType: row.job_type,
+      salaryRange: row.salary_range,
+      jobSlug: normalizedSlug,
+      postedDaysAgo: normalizeDaysAgo(row.posted_days_ago)
     });
   }
 
@@ -119,41 +124,24 @@ function buildJobPayloads(rows, companiesBySlug) {
   };
 }
 
-function chunkItems(items, size) {
-  const chunks = [];
+async function syncJobs(jobs) {
+  for (const job of jobs) {
+    const existing = await getJobs({ companyId: job.companyId, search: job.title });
+    const matched = existing.find((item) => item.jobSlug === job.jobSlug);
 
-  for (let index = 0; index < items.length; index += size) {
-    chunks.push(items.slice(index, index + size));
-  }
-
-  return chunks;
-}
-
-async function upsertJobs(jobs) {
-  const chunks = chunkItems(jobs, UPSERT_BATCH_SIZE);
-  let insertedCount = 0;
-
-  for (const chunk of chunks) {
-    const { data, error } = await supabase
-      .from("jobs")
-      .upsert(chunk, { onConflict: "company_id,job_slug" })
-      .select("id, title, company_id");
-
-    if (error) {
-      throw error;
+    if (!matched) {
+      await addJob(job);
     }
-
-    insertedCount += data.length;
   }
 
-  return insertedCount;
+  return jobs.length;
 }
 
 function buildDistribution(jobs, companiesBySlug) {
   const companiesById = new Map([...companiesBySlug.values()].map((company) => [company.id, company]));
 
   return jobs.reduce((accumulator, job) => {
-    const company = companiesById.get(job.company_id);
+    const company = companiesById.get(job.companyId);
     const key = company?.name || "Unknown";
     accumulator[key] = (accumulator[key] || 0) + 1;
     return accumulator;
@@ -163,9 +151,9 @@ function buildDistribution(jobs, companiesBySlug) {
 async function main() {
   const filePath = path.resolve(defaultFilePath);
   const rows = await readRows(filePath);
-  const companiesBySlug = await upsertCompanies();
+  const companiesBySlug = await ensureCompanies();
   const { jobs, duplicateCount } = buildJobPayloads(rows, companiesBySlug);
-  const insertedCount = await upsertJobs(jobs);
+  const insertedCount = await syncJobs(jobs);
   const distribution = buildDistribution(jobs, companiesBySlug);
 
   console.log(`Imported ${insertedCount} jobs from ${filePath}`);

@@ -1,164 +1,137 @@
-import { useState } from "react";
-import BottomTabs from "./components/dashboard/BottomTabs";
-import DashboardNav from "./components/dashboard/DashboardNav";
-import DashboardSidebar from "./components/dashboard/DashboardSidebar";
-import EditorCard from "./components/dashboard/EditorCard";
-import CompanyEditor from "./components/dashboard/CompanyEditor";
-import AboutEditor from "./components/dashboard/AboutEditor";
-import JobsEditor from "./components/dashboard/JobsEditor";
-import AppShell from "./components/dashboard/AppShell";
-import CareersPreview from "./components/preview/CareersPreview";
-import { dashboardSections, initialCareerPage } from "./data/careers";
-
-function getNewJob(index) {
-  return {
-    id: `job-${index}`,
-    title: "New Role",
-    location: "Remote",
-    type: "Full-time",
-    summary: "Add a short summary for this new position."
-  };
-}
+import { useEffect, useState } from "react";
+import DashboardPage from "./pages/DashboardPage";
+import LandingPage from "./pages/LandingPage";
+import RecruiterAccessPage from "./pages/RecruiterAccessPage";
+import RecruiterCompanyViewPage from "./pages/RecruiterCompanyViewPage";
+import { createCompany, fetchCompanies, getErrorMessage } from "./services/api";
 
 export default function App() {
-  const [activeSection, setActiveSection] = useState("company");
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [careerPage, setCareerPage] = useState(initialCareerPage);
+  const [view, setView] = useState("landing");
+  const [activeCompanySlug, setActiveCompanySlug] = useState("stripe");
+  const [accessMode, setAccessMode] = useState("existing");
+  const [accessCompanySlug, setAccessCompanySlug] = useState("");
+  const [newCompanyName, setNewCompanyName] = useState("");
+  const [accessCompanies, setAccessCompanies] = useState([]);
+  const [accessState, setAccessState] = useState({
+    loading: false,
+    error: "",
+    initialized: false
+  });
 
-  const updateCompanyField = (field, value) => {
-    setCareerPage((current) => ({
-      ...current,
-      company: {
-        ...current.company,
-        [field]: value
+  useEffect(() => {
+    let isCancelled = false;
+
+    async function loadAccessCompanies() {
+      if (view !== "access") {
+        return;
       }
-    }));
+
+      if (accessState.initialized && accessCompanies.length > 0) {
+        return;
+      }
+
+      setAccessState({ loading: true, error: "", initialized: accessState.initialized });
+
+      try {
+        const companies = await fetchCompanies();
+
+        if (isCancelled) {
+          return;
+        }
+
+        setAccessCompanies(companies);
+        setAccessCompanySlug((current) => current || companies[0]?.slug || "");
+        setAccessState({ loading: false, error: "", initialized: true });
+      } catch (error) {
+        if (isCancelled) {
+          return;
+        }
+
+        setAccessState({
+          loading: false,
+          error: getErrorMessage(error, "Failed to load companies."),
+          initialized: true
+        });
+      }
+    }
+
+    loadAccessCompanies();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [view, accessState.initialized, accessCompanies.length]);
+
+  const openRecruiterAccess = (companySlug = "") => {
+    setAccessMode(companySlug ? "existing" : accessCompanies.length > 0 ? "existing" : "new");
+    setAccessCompanySlug(companySlug || accessCompanySlug || accessCompanies[0]?.slug || "");
+    setNewCompanyName("");
+    setView("access");
   };
 
-  const updateAbout = (value) => {
-    setCareerPage((current) => ({
-      ...current,
-      about: value
-    }));
+  const continueToCompanyView = async () => {
+    setAccessState((current) => ({ ...current, loading: true, error: "" }));
+
+    try {
+      if (accessMode === "new") {
+        const company = await createCompany({ name: newCompanyName.trim() });
+        setAccessCompanies((current) => [...current, company].sort((left, right) => left.name.localeCompare(right.name)));
+        setActiveCompanySlug(company.slug);
+      } else {
+        setActiveCompanySlug(accessCompanySlug);
+      }
+
+      setAccessState((current) => ({ ...current, loading: false, error: "", initialized: true }));
+      setView("companyView");
+    } catch (error) {
+      setAccessState((current) => ({
+        ...current,
+        loading: false,
+        error: getErrorMessage(error, "Failed to open recruiter workspace."),
+        initialized: true
+      }));
+    }
   };
 
-  const updateJob = (jobId, field, value) => {
-    setCareerPage((current) => ({
-      ...current,
-      jobs: current.jobs.map((job) =>
-        job.id === jobId
-          ? {
-              ...job,
-              [field]: value
-            }
-          : job
-      )
-    }));
-  };
-
-  const addJob = () => {
-    setCareerPage((current) => ({
-      ...current,
-      jobs: [...current.jobs, getNewJob(current.jobs.length + 1)]
-    }));
-    setActiveSection("jobs");
-  };
-
-  return (
-    <AppShell>
-      <DashboardNav />
-      <main className="mx-auto max-w-7xl px-4 pb-28 pt-6 sm:px-6 lg:px-8 lg:pb-12">
-        <div className="grid gap-6 lg:grid-cols-[auto_1fr] lg:items-start">
-          <DashboardSidebar
-            sections={dashboardSections}
-            activeSection={activeSection}
-            isCollapsed={isSidebarCollapsed}
-            onToggle={() => setIsSidebarCollapsed((current) => !current)}
-            onSelect={setActiveSection}
-          />
-
-          <div className="space-y-6">
-            <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-              <div className="space-y-6">
-                {activeSection === "company" && (
-                  <EditorCard
-                    title="Company details"
-                    description="Update the company identity and banner content shown in the hero section."
-                  >
-                    <CompanyEditor company={careerPage.company} onChange={updateCompanyField} />
-                  </EditorCard>
-                )}
-
-                {activeSection === "about" && (
-                  <EditorCard
-                    title="About section"
-                    description="Refine the story candidates read before they explore open roles."
-                  >
-                    <AboutEditor value={careerPage.about} onChange={updateAbout} />
-                  </EditorCard>
-                )}
-
-                {activeSection === "jobs" && (
-                  <EditorCard
-                    title="Job listings"
-                    description="Add and edit open roles. Every change appears in the preview instantly."
-                  >
-                    <JobsEditor
-                      jobs={careerPage.jobs}
-                      onUpdateJob={updateJob}
-                      onAddJob={addJob}
-                    />
-                  </EditorCard>
-                )}
-              </div>
-
-              <div className="space-y-4">
-                <div className="rounded-[28px] border border-slate-200/80 bg-white p-5 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
-                  <p className="text-sm font-semibold text-slate-950">Editing focus</p>
-                  <p className="mt-1 text-sm leading-6 text-slate-500">
-                    Use the navigation to jump between sections. The preview below reflects every field in real time.
-                  </p>
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {dashboardSections.map((section) => {
-                      const isActive = section.id === activeSection;
-
-                      return (
-                        <button
-                          key={section.id}
-                          type="button"
-                          onClick={() => setActiveSection(section.id)}
-                          className={`rounded-full px-4 py-2 text-sm font-medium transition ${
-                            isActive
-                              ? "bg-slate-950 text-white"
-                              : "border border-slate-200 bg-slate-50 text-slate-600 hover:bg-white hover:text-slate-950"
-                          }`}
-                        >
-                          {section.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            <section className="space-y-4">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">Live preview</p>
-                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">
-                  Preview the public careers page as you edit.
-                </h2>
-              </div>
-              <CareersPreview page={careerPage} />
-            </section>
-          </div>
-        </div>
-      </main>
-      <BottomTabs
-        sections={dashboardSections}
-        activeSection={activeSection}
-        onSelect={setActiveSection}
+  if (view === "dashboard") {
+    return (
+      <DashboardPage
+        initialCompanySlug={activeCompanySlug}
+        onExit={() => setView("companyView")}
       />
-    </AppShell>
-  );
+    );
+  }
+
+  if (view === "companyView") {
+    return (
+      <RecruiterCompanyViewPage
+        companySlug={activeCompanySlug}
+        onBack={() => setView("landing")}
+        onEdit={(companySlug) => {
+          setActiveCompanySlug(companySlug);
+          setView("dashboard");
+        }}
+      />
+    );
+  }
+
+  if (view === "access") {
+    return (
+      <RecruiterAccessPage
+        companies={accessCompanies}
+        selectedCompanySlug={accessCompanySlug}
+        newCompanyName={newCompanyName}
+        mode={accessMode}
+        loading={accessState.loading}
+        error={accessState.error}
+        onModeChange={setAccessMode}
+        onSelectCompany={setAccessCompanySlug}
+        onNewCompanyChange={setNewCompanyName}
+        onContinue={continueToCompanyView}
+        onBack={() => setView("landing")}
+      />
+    );
+  }
+
+  return <LandingPage onRecruiterLogin={openRecruiterAccess} />;
 }

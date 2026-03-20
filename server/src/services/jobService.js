@@ -1,3 +1,4 @@
+import { findCompanyRecordBySlug } from "../services/companyService.js";
 import { supabase } from "../lib/supabase.js";
 import { HttpError } from "../utils/httpError.js";
 
@@ -116,4 +117,15 @@ export async function getJobs(filters) {
     ...mapJob(job),
     company: Array.isArray(job.companies) ? job.companies[0] ?? null : job.companies
   }));
+}
+
+export async function getJobsByCompanySlug(slug, filters = {}) {
+  const company = await findCompanyRecordBySlug(slug);
+
+  return getJobs({
+    companyId: company.id,
+    location: filters.location,
+    type: filters.type,
+    search: filters.search
+  });
 }

@@ -24,7 +24,7 @@ export default function JobsEditor({ jobs, onUpdateJob, onAddJob }) {
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
               <p className="text-sm font-semibold text-slate-950">Role {index + 1}</p>
-              <p className="text-xs text-slate-500">Visible in the live preview instantly</p>
+              <p className="text-xs text-slate-500">Edits stay local until you save this section</p>
             </div>
           </div>
 

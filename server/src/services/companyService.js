@@ -1,6 +1,8 @@
+import { ensureCareerPageForCompany } from "./careerPageService.js";
 import { supabase } from "../lib/supabase.js";
 import { createSlug } from "../utils/createSlug.js";
 import { HttpError } from "../utils/httpError.js";
+import { sanitizeCompanyPayload } from "../utils/careerPageSanitizers.js";
 
 function mapCompany(company) {
   return {
@@ -29,17 +31,14 @@ export async function listCompanies() {
 }
 
 export async function createCompany(payload) {
-  const slug = payload.slug ? createSlug(payload.slug) : createSlug(payload.name);
+  const companyPayload = sanitizeCompanyPayload({
+    ...payload,
+    slug: payload.slug ? payload.slug : createSlug(payload.name)
+  });
 
   const { data, error } = await supabase
     .from("companies")
-    .insert({
-      name: payload.name,
-      slug,
-      logo: payload.logo ?? null,
-      banner: payload.banner ?? null,
-      about: payload.about ?? null
-    })
+    .insert(companyPayload)
     .select()
     .single();
 
@@ -51,7 +50,9 @@ export async function createCompany(payload) {
     throw error;
   }
 
-  return mapCompany(data);
+  const company = mapCompany(data);
+  await ensureCareerPageForCompany(company);
+  return company;
 }
 
 export async function getCompanyBySlug(slug) {
@@ -73,13 +74,7 @@ export async function getCompanyBySlug(slug) {
 }
 
 export async function updateCompanyBySlug(slug, updates) {
-  const payload = {
-    ...(updates.name !== undefined ? { name: updates.name } : {}),
-    ...(updates.slug !== undefined ? { slug: createSlug(updates.slug) } : {}),
-    ...(updates.logo !== undefined ? { logo: updates.logo } : {}),
-    ...(updates.banner !== undefined ? { banner: updates.banner } : {}),
-    ...(updates.about !== undefined ? { about: updates.about } : {})
-  };
+  const payload = sanitizeCompanyPayload(updates);
 
   const { data, error } = await supabase
     .from("companies")
@@ -100,13 +95,15 @@ export async function updateCompanyBySlug(slug, updates) {
     throw new HttpError(404, "Company not found");
   }
 
-  return mapCompany(data);
+  const company = mapCompany(data);
+  await ensureCareerPageForCompany(company);
+  return company;
 }
 
 export async function findCompanyRecordBySlug(slug) {
   const { data, error } = await supabase
     .from("companies")
-    .select("id, slug")
+    .select("id, slug, name, logo, banner, about")
     .eq("slug", slug)
     .maybeSingle();
 
