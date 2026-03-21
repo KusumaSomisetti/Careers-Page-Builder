@@ -1,7 +1,7 @@
 ﻿export const dashboardSections = [
-  { id: "brand", label: "Brand" },
+  { id: "brand", label: "Brand Theme" },
   { id: "sections", label: "Sections" },
-  { id: "roles", label: "Roles" }
+  { id: "preview", label: "Preview" }
 ];
 
 export const initialCareerPage = {

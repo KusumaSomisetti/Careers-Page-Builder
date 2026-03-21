@@ -438,7 +438,14 @@ export default function CareersPageView({
             return <OpenRolesSection key={section.id} section={section} jobs={jobs} companyName={companyName} accentColor={accentColor} />;
           }
 
-          return null;
+          return (
+            <section key={section.id}>
+              <SectionHeading title={section.title} delay={140 + index * 20} />
+              <p className="careers-reveal mt-4 max-w-5xl text-[1.02rem] leading-8 text-slate-600 sm:text-[1.08rem] lg:text-[1.12rem] lg:leading-9" style={{ animationDelay: `${160 + index * 20}ms` }}>
+                {section.content?.body || "Add custom content for this section."}
+              </p>
+            </section>
+          );
         })}
       </div>
     </div>

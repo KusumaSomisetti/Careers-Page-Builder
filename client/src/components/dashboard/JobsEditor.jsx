@@ -15,7 +15,7 @@ function JobField({ label, value, onChange, placeholder }) {
   );
 }
 
-function ModeCard({ active, title, description, onClick }) {
+function ModeCard({ active, title, onClick }) {
   return (
     <button
       type="button"
@@ -27,7 +27,6 @@ function ModeCard({ active, title, description, onClick }) {
       }`}
     >
       <p className="text-sm font-semibold tracking-tight">{title}</p>
-      <p className={`mt-2 text-sm leading-6 ${active ? "text-slate-200" : "text-slate-500"}`}>{description}</p>
     </button>
   );
 }
@@ -65,13 +64,11 @@ export default function JobsEditor({ jobs, onUpdateJob, onAddJob }) {
         <ModeCard
           active={mode === "add"}
           title="Add new job"
-          description="Create a fresh role and then refine its title, type, location, and description."
           onClick={() => setMode("add")}
         />
         <ModeCard
           active={mode === "edit"}
           title="Edit existing"
-          description="Select one of the current live roles and update it without scanning through a long list."
           onClick={() => setMode("edit")}
         />
       </div>
@@ -92,7 +89,7 @@ export default function JobsEditor({ jobs, onUpdateJob, onAddJob }) {
         </div>
       ) : jobs.length > 0 ? (
         <div className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="hide-scrollbar flex gap-3 overflow-x-auto pb-1">
             {jobs.map((job, index) => {
               const active = job.id === selectedJobId;
 
@@ -101,7 +98,7 @@ export default function JobsEditor({ jobs, onUpdateJob, onAddJob }) {
                   key={job.id}
                   type="button"
                   onClick={() => setSelectedJobId(job.id)}
-                  className={`w-full rounded-[20px] border px-4 py-3 text-left transition ${
+                  className={`min-w-[15rem] shrink-0 rounded-[20px] border px-4 py-3 text-left transition ${
                     active
                       ? "border-slate-950 bg-slate-950 text-white"
                       : "border-slate-200 bg-white text-slate-800 hover:border-slate-300"

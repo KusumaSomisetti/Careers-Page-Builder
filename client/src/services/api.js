@@ -73,3 +73,15 @@ export async function updateJob(jobId, payload) {
   const response = await api.patch(`/jobs/${jobId}`, payload);
   return response.data;
 }
+
+export async function fetchPublicCareerPage(slug, filters = {}) {
+  const response = await api.get(`/careers/${slug}`, {
+    params: {
+      location: filters.location,
+      type: filters.type,
+      search: filters.search
+    }
+  });
+
+  return response.data;
+}

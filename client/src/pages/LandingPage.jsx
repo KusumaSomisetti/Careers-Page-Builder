@@ -1,16 +1,9 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
 import AppShell from "../components/dashboard/AppShell";
 import BrandMark from "../components/BrandMark";
-import { fetchCompanies, fetchJobs, getErrorMessage } from "../services/api";
-
-function SearchIcon() {
-  return (
-    <div className="relative h-10 w-10 text-teal-600 sm:h-12 sm:w-12">
-      <div className="absolute left-0 top-0 h-7 w-7 rounded-full border-[4px] border-current sm:h-8 sm:w-8" />
-      <div className="absolute bottom-1 right-0 h-4 w-[4px] rotate-[-45deg] rounded-full bg-current sm:h-5" />
-    </div>
-  );
-}
+import { fetchCareerPageEditor, fetchCompanies, fetchJobs, getErrorMessage } from "../services/api";
 
 function LockIcon() {
   return (
@@ -21,15 +14,31 @@ function LockIcon() {
   );
 }
 
-function CompanyCard({ company, openRoles, onSelect }) {
+function CompanyLogo({ company, brand }) {
+  if (brand?.logoImageUrl) {
+    return <img src={brand.logoImageUrl} alt={company.name} className="h-20 w-20 rounded-[22px] object-cover sm:h-24 sm:w-24" />;
+  }
+
+  if (brand?.logoText || company.logo) {
+    return (
+      <span className="text-2xl font-semibold uppercase tracking-[0.2em] text-slate-700 sm:text-3xl">
+        {(brand?.logoText || company.logo || company.name.slice(0, 2)).slice(0, 3)}
+      </span>
+    );
+  }
+
+  return <BrandMark />;
+}
+
+function CompanyCard({ company, openRoles, brand, onOpen }) {
   return (
     <button
       type="button"
-      onClick={() => onSelect(company.slug)}
+      onClick={() => onOpen(company.slug)}
       className="w-[260px] shrink-0 rounded-[26px] border border-slate-200/90 bg-white p-5 text-left shadow-[0_12px_36px_rgba(15,23,42,0.08)] transition hover:-translate-y-1 hover:shadow-[0_18px_50px_rgba(15,23,42,0.12)] sm:w-[300px] lg:w-[340px]"
     >
       <div className="mb-5 flex h-32 items-center justify-center rounded-[18px] bg-[linear-gradient(180deg,#eef2f7_0%,#e2e8f0_100%)] text-slate-400 shadow-inner sm:h-36 lg:h-40">
-        <BrandMark />
+        <CompanyLogo company={company} brand={brand} />
       </div>
       <p className="text-[1.7rem] font-semibold tracking-tight text-slate-950 sm:text-[1.9rem]">{company.name}</p>
       <p className="mt-1 text-[1.1rem] text-slate-700">{openRoles} Open Roles</p>
@@ -42,7 +51,7 @@ function JobResultCard({ job }) {
     <article className="rounded-[26px] border border-slate-200/80 bg-white p-5 shadow-[0_12px_36px_rgba(15,23,42,0.06)]">
       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">{job.company?.name || "Company"}</p>
       <h3 className="mt-3 text-xl font-semibold tracking-tight text-slate-950">{job.title}</h3>
-      <p className="mt-2 text-sm text-slate-500">{job.location} • {job.type}</p>
+      <p className="mt-2 text-sm text-slate-500">{job.location} ? {job.type}</p>
       <p className="mt-3 text-sm leading-7 text-slate-600">{job.summary}</p>
     </article>
   );
@@ -52,6 +61,7 @@ export default function LandingPage({ onRecruiterLogin }) {
   const [searchValue, setSearchValue] = useState("");
   const [companies, setCompanies] = useState([]);
   const [jobs, setJobs] = useState([]);
+  const [companyBrands, setCompanyBrands] = useState({});
   const [state, setState] = useState({ loading: true, error: "" });
 
   useEffect(() => {
@@ -62,6 +72,30 @@ export default function LandingPage({ onRecruiterLogin }) {
 
       try {
         const [companyList, jobList] = await Promise.all([fetchCompanies(), fetchJobs()]);
+        const brandEntries = await Promise.all(
+          companyList.map(async (company) => {
+            try {
+              const editorPage = await fetchCareerPageEditor(company.slug);
+              return [
+                company.slug,
+                {
+                  logoImageUrl: editorPage.careerPage.draft.themeSettings?.logoImageUrl || "",
+                  logoText: editorPage.careerPage.draft.themeSettings?.logoText || company.logo || "",
+                  shareUrl: editorPage.careerPage.shareUrl || `${window.location.origin}/careers/${company.slug}`
+                }
+              ];
+            } catch {
+              return [
+                company.slug,
+                {
+                  logoImageUrl: "",
+                  logoText: company.logo || "",
+                  shareUrl: `${window.location.origin}/careers/${company.slug}`
+                }
+              ];
+            }
+          })
+        );
 
         if (isCancelled) {
           return;
@@ -69,6 +103,7 @@ export default function LandingPage({ onRecruiterLogin }) {
 
         setCompanies(companyList);
         setJobs(jobList);
+        setCompanyBrands(Object.fromEntries(brandEntries));
         setState({ loading: false, error: "" });
       } catch (error) {
         if (isCancelled) {
@@ -113,20 +148,23 @@ export default function LandingPage({ onRecruiterLogin }) {
 
   const filteredJobs = useMemo(() => {
     if (!normalizedQuery) {
-      return jobs.slice(0, 6);
+      return jobs;
     }
 
-    return jobs
-      .filter((job) => {
-        const companyName = job.company?.name?.toLowerCase() || "";
-        return (
-          job.title.toLowerCase().includes(normalizedQuery) ||
-          companyName.includes(normalizedQuery) ||
-          (job.summary || "").toLowerCase().includes(normalizedQuery)
-        );
-      })
-      .slice(0, 6);
+    return jobs.filter((job) => {
+      const companyName = job.company?.name?.toLowerCase() || "";
+      return (
+        job.title.toLowerCase().includes(normalizedQuery) ||
+        companyName.includes(normalizedQuery) ||
+        (job.summary || "").toLowerCase().includes(normalizedQuery)
+      );
+    });
   }, [jobs, normalizedQuery]);
+
+  const openCompanyCareers = (companySlug) => {
+    const shareUrl = companyBrands[companySlug]?.shareUrl || `${window.location.origin}/careers/${companySlug}`;
+    window.open(shareUrl, "_blank", "noopener,noreferrer");
+  };
 
   return (
     <AppShell>
@@ -156,8 +194,8 @@ export default function LandingPage({ onRecruiterLogin }) {
             </h1>
 
             <div className="mt-7 rounded-[24px] border-[4px] border-slate-400/75 bg-white/90 px-4 py-4 shadow-[0_12px_36px_rgba(15,23,42,0.06)] sm:px-6 sm:py-5">
-              <label className="flex items-center gap-4 sm:gap-5">
-                <SearchIcon />
+              <label className="flex items-center gap-4 text-slate-500 sm:gap-5">
+                <FontAwesomeIcon icon={faMagnifyingGlass} className="text-[1.5rem] text-teal-600 sm:text-[1.75rem]" />
                 <input
                   type="text"
                   value={searchValue}
@@ -226,12 +264,13 @@ export default function LandingPage({ onRecruiterLogin }) {
             </div>
           ) : filteredCompanies.length > 0 ? (
             <div className="hide-scrollbar mt-8 flex snap-x gap-5 overflow-x-auto pb-3">
-              {filteredCompanies.slice(0, 6).map((company) => (
+              {filteredCompanies.map((company) => (
                 <div key={company.slug} className="snap-start">
                   <CompanyCard
                     company={company}
                     openRoles={roleCounts[company.slug] || 0}
-                    onSelect={onRecruiterLogin}
+                    brand={companyBrands[company.slug]}
+                    onOpen={openCompanyCareers}
                   />
                 </div>
               ))}
@@ -273,4 +312,3 @@ export default function LandingPage({ onRecruiterLogin }) {
     </AppShell>
   );
 }
-

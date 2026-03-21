@@ -1,35 +1,54 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faChevronDown, faChevronUp, faPlus, faTrashCan } from "@fortawesome/free-solid-svg-icons";
 
-const SECTION_LIBRARY = [
-  { type: "about_us", label: "About Us", template: { body: "Tell candidates what makes your company worth joining." } },
-  { type: "life_at_company", label: "Life at Company", template: { headline: "Show how your team works and grows together.", items: [] } },
-  { type: "open_roles", label: "Open Roles", template: { headline: "Explore current opportunities" } }
-];
-
-function createSection(type) {
-  const definition = SECTION_LIBRARY.find((entry) => entry.type === type);
-  const baseId = definition?.label?.toLowerCase().replace(/[^a-z0-9]+/g, "-") || type;
+function createCustomSection() {
   return {
-    id: `${baseId}-${Date.now()}`,
-    type,
-    title: definition?.label || "Section",
+    id: `custom-section-${Date.now()}`,
+    type: "custom",
+    title: "New Section",
     isVisible: true,
-    content: structuredClone(definition?.template || {})
+    content: {
+      body: "Add section content here."
+    }
   };
 }
 
 function SectionRow({ section, isActive, onClick, onMove, onRemove }) {
+  const sectionLabel = section.type === "custom" ? "custom section" : section.type.replace(/_/g, " ");
+
   return (
     <div className={`rounded-[20px] border p-4 transition ${isActive ? "border-slate-950 bg-slate-950 text-white" : "border-slate-200 bg-white"}`}>
       <div className="flex items-start justify-between gap-3">
         <button type="button" onClick={onClick} className="min-w-0 flex-1 text-left">
-          <p className={`text-xs font-semibold uppercase tracking-[0.16em] ${isActive ? "text-slate-300" : "text-slate-400"}`}>{section.type.replace(/_/g, " ")}</p>
+          <p className={`text-xs font-semibold uppercase tracking-[0.16em] ${isActive ? "text-slate-300" : "text-slate-400"}`}>{sectionLabel}</p>
           <p className="mt-2 truncate text-base font-semibold tracking-tight">{section.title}</p>
         </button>
-        <div className="flex shrink-0 gap-2">
-          <button type="button" onClick={() => onMove(-1)} className={`rounded-full px-3 py-1 text-xs font-semibold ${isActive ? "bg-white/12 text-white" : "bg-slate-100 text-slate-600"}`}>Up</button>
-          <button type="button" onClick={() => onMove(1)} className={`rounded-full px-3 py-1 text-xs font-semibold ${isActive ? "bg-white/12 text-white" : "bg-slate-100 text-slate-600"}`}>Down</button>
-          <button type="button" onClick={onRemove} className={`rounded-full px-3 py-1 text-xs font-semibold ${isActive ? "bg-rose-500/20 text-rose-100" : "bg-rose-50 text-rose-600"}`}>Remove</button>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onMove(-1)}
+            className={`inline-flex h-9 w-9 items-center justify-center rounded-full ${isActive ? "bg-white/12 text-white" : "bg-slate-100 text-slate-600"}`}
+            aria-label="Move section up"
+          >
+            <FontAwesomeIcon icon={faChevronUp} />
+          </button>
+          <button
+            type="button"
+            onClick={() => onMove(1)}
+            className={`inline-flex h-9 w-9 items-center justify-center rounded-full ${isActive ? "bg-white/12 text-white" : "bg-slate-100 text-slate-600"}`}
+            aria-label="Move section down"
+          >
+            <FontAwesomeIcon icon={faChevronDown} />
+          </button>
+          <button
+            type="button"
+            onClick={onRemove}
+            className={`inline-flex h-9 w-9 items-center justify-center rounded-full ${isActive ? "bg-rose-500/20 text-rose-100" : "bg-rose-50 text-rose-600"}`}
+            aria-label="Remove section"
+          >
+            <FontAwesomeIcon icon={faTrashCan} />
+          </button>
         </div>
       </div>
     </div>
@@ -50,9 +69,7 @@ export default function SectionsEditor({ sections, onChange }) {
     }
   }, [sections, selectedSectionId]);
 
-  const selectedSection = useMemo(() => {
-    return sections.find((section) => section.id === selectedSectionId) || null;
-  }, [sections, selectedSectionId]);
+  const selectedSection = useMemo(() => sections.find((section) => section.id === selectedSectionId) || null, [sections, selectedSectionId]);
 
   const updateSection = (sectionId, updates) => {
     onChange(sections.map((section) => (section.id === sectionId ? { ...section, ...updates } : section)));
@@ -84,8 +101,8 @@ export default function SectionsEditor({ sections, onChange }) {
     onChange(sections.filter((section) => section.id !== sectionId));
   };
 
-  const addSection = (type) => {
-    const next = [...sections, createSection(type)];
+  const addSection = () => {
+    const next = [...sections, createCustomSection()];
     onChange(next);
     setSelectedSectionId(next[next.length - 1].id);
   };
@@ -94,6 +111,21 @@ export default function SectionsEditor({ sections, onChange }) {
 
   return (
     <div className="space-y-5">
+      <div className="flex items-center justify-between gap-3 rounded-[20px] border border-slate-200 bg-white px-4 py-3.5">
+        <div>
+          <p className="text-sm font-semibold text-slate-950">Page sections</p>
+          <p className="mt-1 text-sm text-slate-500">Manage current sections and add custom content blocks.</p>
+        </div>
+        <button
+          type="button"
+          onClick={addSection}
+          className="inline-flex items-center gap-2 rounded-full bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
+        >
+          <FontAwesomeIcon icon={faPlus} />
+          <span>Add new section</span>
+        </button>
+      </div>
+
       <div className="space-y-3">
         {sections.map((section) => (
           <SectionRow
@@ -104,19 +136,6 @@ export default function SectionsEditor({ sections, onChange }) {
             onMove={(direction) => moveSection(section.id, direction)}
             onRemove={() => removeSection(section.id)}
           />
-        ))}
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-3">
-        {SECTION_LIBRARY.map((entry) => (
-          <button
-            key={entry.type}
-            type="button"
-            onClick={() => addSection(entry.type)}
-            className="rounded-[18px] border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-white"
-          >
-            Add {entry.label}
-          </button>
         ))}
       </div>
 
@@ -195,10 +214,22 @@ export default function SectionsEditor({ sections, onChange }) {
               />
             </label>
           ) : null}
+
+          {selectedSection.type === "custom" ? (
+            <label className="mt-4 block space-y-2">
+              <span className="text-sm font-medium text-slate-700">Section content</span>
+              <textarea
+                rows={7}
+                value={selectedSection.content?.body || ""}
+                onChange={(event) => updateContent(selectedSection.id, { body: event.target.value })}
+                className="w-full rounded-[18px] border border-slate-200 bg-white px-4 py-3 text-sm leading-7 text-slate-900 outline-none"
+              />
+            </label>
+          ) : null}
         </div>
       ) : (
         <div className="rounded-[24px] border border-dashed border-slate-300 bg-slate-50/70 p-5 text-sm text-slate-500">
-          Add a section to start structuring the page.
+          Select a section to edit it, or add a new custom section.
         </div>
       )}
     </div>
