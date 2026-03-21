@@ -1,12 +1,23 @@
 import { useEffect, useState } from "react";
 import DashboardPage from "./pages/DashboardPage";
 import LandingPage from "./pages/LandingPage";
+import PublicCareerPage from "./pages/PublicCareerPage";
 import RecruiterAccessPage from "./pages/RecruiterAccessPage";
 import RecruiterCompanyViewPage from "./pages/RecruiterCompanyViewPage";
 import { createCompany, fetchCompanies, getErrorMessage } from "./services/api";
 
+function getPublicCareerSlugFromPath() {
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  const match = window.location.pathname.match(/^\/careers\/([^/]+)\/?$/);
+  return match ? decodeURIComponent(match[1]) : "";
+}
+
 export default function App() {
-  const [view, setView] = useState("landing");
+  const [view, setView] = useState(() => (getPublicCareerSlugFromPath() ? "publicCareer" : "landing"));
+  const [publicCompanySlug, setPublicCompanySlug] = useState(() => getPublicCareerSlugFromPath());
   const [activeCompanySlug, setActiveCompanySlug] = useState("stripe");
   const [accessMode, setAccessMode] = useState("existing");
   const [accessCompanySlug, setAccessCompanySlug] = useState("");
@@ -17,6 +28,26 @@ export default function App() {
     error: "",
     initialized: false
   });
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
+    const syncViewFromLocation = () => {
+      const slug = getPublicCareerSlugFromPath();
+      if (slug) {
+        setPublicCompanySlug(slug);
+        setView("publicCareer");
+      } else {
+        setPublicCompanySlug("");
+        setView("landing");
+      }
+    };
+
+    window.addEventListener("popstate", syncViewFromLocation);
+    return () => window.removeEventListener("popstate", syncViewFromLocation);
+  }, []);
 
   useEffect(() => {
     let isCancelled = false;
@@ -92,6 +123,24 @@ export default function App() {
       }));
     }
   };
+
+  if (view === "publicCareer") {
+    return (
+      <PublicCareerPage
+        companySlug={publicCompanySlug}
+        onBack={() => {
+          if (typeof window !== "undefined" && window.history.length > 1) {
+            window.history.back();
+            return;
+          }
+
+          if (typeof window !== "undefined") {
+            window.location.assign("/");
+          }
+        }}
+      />
+    );
+  }
 
   if (view === "dashboard") {
     return (

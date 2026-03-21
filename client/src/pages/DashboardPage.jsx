@@ -1,11 +1,16 @@
-import { useEffect, useState } from "react";
-import BottomTabs from "../components/dashboard/BottomTabs";
-import DashboardNav from "../components/dashboard/DashboardNav";
-import DashboardSidebar from "../components/dashboard/DashboardSidebar";
-import EditorCard from "../components/dashboard/EditorCard";
+﻿import { useEffect, useMemo, useState } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faArrowLeft,
+  faCheck,
+  faFloppyDisk,
+  faLink,
+  faPaperPlane,
+  faShareNodes,
+  faXmark
+} from "@fortawesome/free-solid-svg-icons";
 import CompanyEditor from "../components/dashboard/CompanyEditor";
-import CompanyPicker from "../components/dashboard/CompanyPicker";
-import AboutEditor from "../components/dashboard/AboutEditor";
+import SectionsEditor from "../components/dashboard/SectionsEditor";
 import JobsEditor from "../components/dashboard/JobsEditor";
 import AppShell from "../components/dashboard/AppShell";
 import CareersPreview from "../components/preview/CareersPreview";
@@ -13,15 +18,14 @@ import { dashboardSections, initialCareerPage } from "../data/careers";
 import {
   createCompany,
   createJob,
-  fetchCompanies,
-  fetchCompanyBySlug,
+  fetchCareerPageEditor,
   fetchJobs,
   getErrorMessage,
+  publishCareerPage,
+  updateCareerPageDraft,
   updateCompany,
   updateJob
 } from "../services/api";
-
-
 
 function createDraftJob(index) {
   return {
@@ -33,11 +37,28 @@ function createDraftJob(index) {
   };
 }
 
-function toCompanyState(company) {
+function toBuilderState(editorPage, jobs) {
   return {
-    name: company.name || "",
-    logo: company.logo || "",
-    banner: company.banner || ""
+    company: {
+      name: editorPage.company.name || "",
+      logo: editorPage.company.logo || ""
+    },
+    themeSettings: {
+      primaryColor: editorPage.careerPage.draft.themeSettings?.primaryColor || "#0f172a",
+      secondaryColor: editorPage.careerPage.draft.themeSettings?.secondaryColor || "#475569",
+      accentColor: editorPage.careerPage.draft.themeSettings?.accentColor || "#0f766e",
+      bannerImageUrl: editorPage.careerPage.draft.themeSettings?.bannerImageUrl || "",
+      logoImageUrl: editorPage.careerPage.draft.themeSettings?.logoImageUrl || "",
+      logoText: editorPage.careerPage.draft.themeSettings?.logoText || editorPage.company.logo || "",
+      cultureVideoUrl: editorPage.careerPage.draft.themeSettings?.cultureVideoUrl || ""
+    },
+    banner: {
+      headline: editorPage.careerPage.draft.banner?.headline || `Careers at ${editorPage.company.name}`,
+      subheadline: editorPage.careerPage.draft.banner?.subheadline || editorPage.company.banner || "",
+      imageUrl: editorPage.careerPage.draft.banner?.imageUrl || ""
+    },
+    sections: editorPage.careerPage.draft.sections || [],
+    jobs
   };
 }
 
@@ -49,104 +70,189 @@ function createEmptyStatus() {
   };
 }
 
-function SectionActions({ label, state, onSave }) {
+function BuilderTabs({ sections, activeSection, onSelect, className = "", compact = false }) {
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div className="min-h-6 text-sm">
-        {state.error ? (
-          <p className="text-rose-600">{state.error}</p>
-        ) : state.success ? (
-          <p className="text-emerald-600">{state.success}</p>
-        ) : (
-          <p className="text-slate-400">Changes save to Supabase through the Express API.</p>
-        )}
+    <div className={`${compact ? "grid w-full grid-cols-2 gap-2 rounded-[20px] border border-slate-200 bg-white/98 p-2 shadow-[0_10px_24px_rgba(15,23,42,0.05)]" : "hide-scrollbar flex gap-2 overflow-x-auto border-b border-slate-200/80 bg-white px-4 py-3 sm:px-6 lg:px-8"} ${className}`.trim()}>
+      {sections.map((section) => {
+        const isActive = section.id === activeSection;
+
+        return (
+          <button
+            key={section.id}
+            type="button"
+            onClick={() => onSelect(section.id)}
+            className={`${compact ? "flex items-center justify-center rounded-[14px] px-4 py-3 text-center" : "border-b-2 px-1.5 pb-2 pt-1"} shrink-0 text-sm font-medium transition ${
+              isActive
+                ? compact
+                  ? "bg-slate-950 text-white"
+                  : "border-slate-950 text-slate-950"
+                : compact
+                  ? "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
+                  : "border-transparent text-slate-400 hover:text-slate-700"
+            }`}
+          >
+            {section.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function BuilderHeader({ companyName, onBack, onOpenSaveMenu, onOpenShareSheet }) {
+  return (
+    <header className="border-b border-slate-200/80 bg-white px-4 py-3 sm:px-6 lg:px-8">
+      <div className="flex items-center justify-between gap-3">
+        <button
+          type="button"
+          onClick={onBack}
+          className="inline-flex items-center gap-2 text-sm font-medium text-slate-700"
+        >
+          <FontAwesomeIcon icon={faArrowLeft} className="text-base" />
+          <span className="truncate">{companyName || "Company"}</span>
+        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onOpenSaveMenu}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-[0_10px_24px_rgba(15,23,42,0.08)]"
+            aria-label="Open save options"
+          >
+            <FontAwesomeIcon icon={faFloppyDisk} />
+          </button>
+          <button
+            type="button"
+            onClick={onOpenShareSheet}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-[0_10px_24px_rgba(15,23,42,0.08)]"
+            aria-label="Open share options"
+          >
+            <FontAwesomeIcon icon={faShareNodes} />
+          </button>
+        </div>
       </div>
-      <button
-        type="button"
-        onClick={onSave}
-        disabled={state.saving}
-        className="inline-flex items-center justify-center rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
-      >
-        {state.saving ? "Saving..." : label}
-      </button>
+    </header>
+  );
+}
+
+function MobileSaveMenu({ open, onClose, onSaveDraft, onSave, loading }) {
+  if (!open) {
+    return null;
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 xl:hidden">
+      <button type="button" className="absolute inset-0 bg-slate-950/20" onClick={onClose} aria-label="Close save menu" />
+      <div className="absolute right-4 top-16 w-48 rounded-[20px] border border-slate-200 bg-white p-2 shadow-[0_20px_50px_rgba(15,23,42,0.18)]">
+        <button
+          type="button"
+          onClick={onSaveDraft}
+          disabled={loading}
+          className="flex w-full items-center gap-3 rounded-[14px] px-4 py-3 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+        >
+          <FontAwesomeIcon icon={faFloppyDisk} />
+          <span>Save Draft</span>
+        </button>
+        <button
+          type="button"
+          onClick={onSave}
+          disabled={loading}
+          className="flex w-full items-center gap-3 rounded-[14px] px-4 py-3 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+        >
+          <FontAwesomeIcon icon={faCheck} />
+          <span>Save</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ShareSheet({ open, link, message, loading, onClose, onCopy, onNativeShare }) {
+  if (!open) {
+    return null;
+  }
+
+  return (
+    <div className="fixed inset-0 z-50">
+      <button type="button" className="absolute inset-0 bg-slate-950/30" onClick={onClose} aria-label="Close share sheet" />
+      <div className="absolute inset-x-0 bottom-0 rounded-t-[28px] bg-white p-5 shadow-[0_-20px_50px_rgba(15,23,42,0.20)] sm:left-1/2 sm:right-auto sm:w-[28rem] sm:-translate-x-1/2 sm:rounded-[28px] sm:bottom-6">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold text-slate-950">Share careers page</p>
+            <p className="mt-1 text-sm text-slate-500">Choose how you want to share this link.</p>
+          </div>
+          <button type="button" onClick={onClose} className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-600">
+            <FontAwesomeIcon icon={faXmark} />
+          </button>
+        </div>
+
+        <div className="mt-4 break-all rounded-[18px] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+          {link || "Preparing your careers page link..."}
+        </div>
+
+        <div className="mt-4 space-y-3">
+          <button
+            type="button"
+            onClick={onCopy}
+            disabled={loading}
+            className="flex w-full items-center gap-3 rounded-[18px] border border-slate-200 bg-white px-4 py-4 text-left text-sm font-medium text-slate-700 transition hover:border-slate-300 disabled:opacity-60"
+          >
+            <FontAwesomeIcon icon={faLink} />
+            <span>Copy link</span>
+          </button>
+          <button
+            type="button"
+            onClick={onNativeShare}
+            disabled={loading}
+            className="flex w-full items-center gap-3 rounded-[18px] border border-slate-200 bg-white px-4 py-4 text-left text-sm font-medium text-slate-700 transition hover:border-slate-300 disabled:opacity-60"
+          >
+            <FontAwesomeIcon icon={faPaperPlane} />
+            <span>Share with apps</span>
+          </button>
+        </div>
+
+        {message ? <p className="mt-4 text-sm text-slate-500">{message}</p> : null}
+      </div>
     </div>
   );
 }
 
 export default function DashboardPage({ initialCompanySlug = "stripe", onExit }) {
-  const [activeSection, setActiveSection] = useState("company");
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [activeSection, setActiveSection] = useState("brand");
   const [careerPage, setCareerPage] = useState(initialCareerPage);
-  const [companies, setCompanies] = useState([]);
-  const [selectedCompanySlug, setSelectedCompanySlug] = useState("");
+  const [selectedCompanySlug, setSelectedCompanySlug] = useState(initialCompanySlug || "");
   const [companyExists, setCompanyExists] = useState(false);
-  const [dashboardState, setDashboardState] = useState({
-    loading: true,
-    error: "",
-    notice: ""
-  });
-  const [companyStatus, setCompanyStatus] = useState(createEmptyStatus());
-  const [aboutStatus, setAboutStatus] = useState(createEmptyStatus());
-  const [jobsStatus, setJobsStatus] = useState({
-    loading: false,
-    error: "",
-    saving: false,
-    success: ""
-  });
-  const [jobFilters, setJobFilters] = useState({
-    search: "",
-    location: "",
-    type: ""
-  });
+  const [dashboardState, setDashboardState] = useState({ loading: true, error: "" });
+  const [brandStatus, setBrandStatus] = useState(createEmptyStatus());
+  const [sectionsStatus, setSectionsStatus] = useState(createEmptyStatus());
+  const [shareState, setShareState] = useState({ loading: false, link: "", message: "" });
+  const [isSaveMenuOpen, setIsSaveMenuOpen] = useState(false);
+  const [isShareSheetOpen, setIsShareSheetOpen] = useState(false);
 
   useEffect(() => {
-    let isCancelled = false;
+    setSelectedCompanySlug(initialCompanySlug || "");
+  }, [initialCompanySlug]);
 
-    async function loadCompanies() {
-      setDashboardState({ loading: true, error: "", notice: "Loading seeded companies..." });
-
-      try {
-        const companyList = await fetchCompanies();
-
-        if (isCancelled) {
-          return;
-        }
-
-        setCompanies(companyList);
-
-        const initialSlug =
-          companyList.find((company) => company.slug === initialCompanySlug)?.slug ||
-          companyList[0]?.slug ||
-          "";
-
-        setSelectedCompanySlug(initialSlug);
-
-        if (!initialSlug) {
-          setCompanyExists(false);
-          setDashboardState({
-            loading: false,
-            error: "",
-            notice: "No companies found yet. Save company details to create the first one."
-          });
-        }
-      } catch (error) {
-        if (isCancelled) {
-          return;
-        }
-
-        setDashboardState({
-          loading: false,
-          error: getErrorMessage(error, "Failed to load companies."),
-          notice: ""
-        });
-      }
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
     }
 
-    loadCompanies();
-
-    return () => {
-      isCancelled = true;
+    const media = window.matchMedia("(min-width: 1280px)");
+    const syncDesktopSection = (event) => {
+      if (event.matches) {
+        setActiveSection((current) => (current === "preview" ? "brand" : current));
+      }
     };
+
+    syncDesktopSection(media);
+
+    if (typeof media.addEventListener === "function") {
+      media.addEventListener("change", syncDesktopSection);
+      return () => media.removeEventListener("change", syncDesktopSection);
+    }
+
+    media.addListener(syncDesktopSection);
+    return () => media.removeListener(syncDesktopSection);
   }, []);
 
   useEffect(() => {
@@ -156,16 +262,15 @@ export default function DashboardPage({ initialCompanySlug = "stripe", onExit })
 
     let isCancelled = false;
 
-    async function loadCompanyDashboard() {
-      setDashboardState({ loading: true, error: "", notice: "Loading company data..." });
-      setJobsStatus((current) => ({ ...current, loading: true, error: "", success: "" }));
-      setCompanyStatus(createEmptyStatus());
-      setAboutStatus(createEmptyStatus());
-      setJobFilters({ search: "", location: "", type: "" });
+    async function loadBuilder() {
+      setDashboardState({ loading: true, error: "" });
+      setBrandStatus(createEmptyStatus());
+      setSectionsStatus(createEmptyStatus());
+      setShareState({ loading: false, link: "", message: "" });
 
       try {
-        const [company, jobs] = await Promise.all([
-          fetchCompanyBySlug(selectedCompanySlug),
+        const [editorPage, jobs] = await Promise.all([
+          fetchCareerPageEditor(selectedCompanySlug),
           fetchJobs({ companySlug: selectedCompanySlug })
         ]);
 
@@ -174,44 +279,18 @@ export default function DashboardPage({ initialCompanySlug = "stripe", onExit })
         }
 
         setCompanyExists(true);
-        setCareerPage({
-          company: toCompanyState(company),
-          about: company.about || "",
-          jobs
-        });
-        setDashboardState({ loading: false, error: "", notice: `Loaded ${company.name} from Supabase.` });
-        setJobsStatus((current) => ({ ...current, loading: false, error: "" }));
+        setCareerPage(toBuilderState(editorPage, jobs));
+        setDashboardState({ loading: false, error: "" });
       } catch (error) {
         if (isCancelled) {
           return;
         }
 
-        if (error.response?.status === 404) {
-          setCompanyExists(false);
-          setCareerPage(initialCareerPage);
-          setDashboardState({
-            loading: false,
-            error: "",
-            notice: "This company was not found. Save company details to create it."
-          });
-          setJobsStatus((current) => ({ ...current, loading: false, error: "" }));
-          return;
-        }
-
-        setDashboardState({
-          loading: false,
-          error: getErrorMessage(error, "Failed to load dashboard data."),
-          notice: ""
-        });
-        setJobsStatus((current) => ({
-          ...current,
-          loading: false,
-          error: getErrorMessage(error, "Failed to load jobs.")
-        }));
+        setDashboardState({ loading: false, error: getErrorMessage(error, "Failed to load the careers builder.") });
       }
     }
 
-    loadCompanyDashboard();
+    loadBuilder();
 
     return () => {
       isCancelled = true;
@@ -219,55 +298,46 @@ export default function DashboardPage({ initialCompanySlug = "stripe", onExit })
   }, [selectedCompanySlug]);
 
   const updateCompanyField = (field, value) => {
-    setCompanyStatus(createEmptyStatus());
-    setAboutStatus(createEmptyStatus());
-    setCareerPage((current) => ({
-      ...current,
-      company: {
-        ...current.company,
-        [field]: value
-      }
-    }));
+    setBrandStatus(createEmptyStatus());
+    setCareerPage((current) => ({ ...current, company: { ...current.company, [field]: value } }));
   };
 
-  const updateAbout = (value) => {
-    setAboutStatus(createEmptyStatus());
-    setCareerPage((current) => ({
-      ...current,
-      about: value
-    }));
+  const updateThemeField = (field, value) => {
+    setBrandStatus(createEmptyStatus());
+    setCareerPage((current) => ({ ...current, themeSettings: { ...current.themeSettings, [field]: value } }));
+  };
+
+  const updateBannerField = (field, value) => {
+    setBrandStatus(createEmptyStatus());
+    setCareerPage((current) => ({ ...current, banner: { ...current.banner, [field]: value } }));
+  };
+
+  const updateSections = (sections) => {
+    setSectionsStatus(createEmptyStatus());
+    setCareerPage((current) => ({ ...current, sections }));
   };
 
   const updateJobField = (jobId, field, value) => {
-    setJobsStatus((current) => ({ ...current, error: "", success: "" }));
+    setSectionsStatus(createEmptyStatus());
     setCareerPage((current) => ({
       ...current,
-      jobs: current.jobs.map((job) =>
-        job.id === jobId
-          ? {
-              ...job,
-              [field]: value
-            }
-          : job
-      )
+      jobs: current.jobs.map((job) => (job.id === jobId ? { ...job, [field]: value } : job))
     }));
   };
 
   const addJobDraft = () => {
-    setJobsStatus((current) => ({ ...current, error: "", success: "" }));
-    setCareerPage((current) => ({
-      ...current,
-      jobs: [...current.jobs, createDraftJob(current.jobs.length + 1)]
-    }));
-    setActiveSection("jobs");
+    setSectionsStatus(createEmptyStatus());
+    setCareerPage((current) => ({ ...current, jobs: [...current.jobs, createDraftJob(current.jobs.length + 1)] }));
+    setActiveSection("sections");
   };
 
   const persistCompany = async () => {
+    const aboutSection = careerPage.sections.find((section) => section.type === "about_us");
     const payload = {
       name: careerPage.company.name,
-      logo: careerPage.company.logo,
-      banner: careerPage.company.banner,
-      about: careerPage.about
+      logo: careerPage.themeSettings.logoText || careerPage.company.logo,
+      banner: careerPage.banner.subheadline,
+      about: aboutSection?.content?.body || ""
     };
 
     const savedCompany = companyExists
@@ -278,268 +348,212 @@ export default function DashboardPage({ initialCompanySlug = "stripe", onExit })
     setCompanyExists(true);
     setCareerPage((current) => ({
       ...current,
-      company: toCompanyState(savedCompany),
-      about: savedCompany.about || current.about
+      company: {
+        ...current.company,
+        name: savedCompany.name || current.company.name,
+        logo: savedCompany.logo || current.company.logo
+      }
     }));
-    setCompanies((current) => {
-      const nextCompanies = current.filter((company) => company.slug !== selectedCompanySlug);
-      nextCompanies.push(savedCompany);
-      return nextCompanies.sort((left, right) => left.name.localeCompare(right.name));
-    });
 
     return savedCompany;
   };
 
-  const saveCompanyDetails = async () => {
-    setCompanyStatus({ saving: true, error: "", success: "" });
+  const persistDraft = async (slug) => {
+    const draft = await updateCareerPageDraft(slug, {
+      themeSettings: careerPage.themeSettings,
+      banner: careerPage.banner,
+      sections: careerPage.sections
+    });
 
+    setCareerPage((current) => ({
+      ...current,
+      themeSettings: {
+        ...current.themeSettings,
+        ...draft.careerPage.draft.themeSettings
+      },
+      banner: {
+        ...current.banner,
+        ...draft.careerPage.draft.banner
+      },
+      sections: draft.careerPage.draft.sections
+    }));
+
+    return draft;
+  };
+
+  const saveBrand = async () => {
+    setBrandStatus({ saving: true, error: "", success: "" });
     try {
       const savedCompany = await persistCompany();
-      setCompanyStatus({ saving: false, error: "", success: "Company details saved." });
-      setDashboardState((current) => ({ ...current, notice: `Connected to ${savedCompany.name}.` }));
+      await persistDraft(savedCompany.slug);
+      setBrandStatus({ saving: false, error: "", success: "Brand theme saved." });
     } catch (error) {
-      setCompanyStatus({
-        saving: false,
-        error: getErrorMessage(error, "Failed to save company details."),
-        success: ""
-      });
+      setBrandStatus({ saving: false, error: getErrorMessage(error, "Failed to save brand theme."), success: "" });
     }
   };
 
-  const saveAboutSection = async () => {
-    setAboutStatus({ saving: true, error: "", success: "" });
-
+  const saveSections = async () => {
+    setSectionsStatus({ saving: true, error: "", success: "" });
     try {
       const savedCompany = await persistCompany();
-      setAboutStatus({ saving: false, error: "", success: "About section saved." });
-      setDashboardState((current) => ({ ...current, notice: `Connected to ${savedCompany.name}.` }));
-    } catch (error) {
-      setAboutStatus({
-        saving: false,
-        error: getErrorMessage(error, "Failed to save about section."),
-        success: ""
-      });
-    }
-  };
-
-  const saveJobsSection = async () => {
-    setJobsStatus((current) => ({ ...current, saving: true, error: "", success: "" }));
-
-    try {
-      const savedCompany = await persistCompany();
+      await persistDraft(savedCompany.slug);
       const savedJobs = await Promise.all(
         careerPage.jobs.map((job) => {
-          const payload = {
-            title: job.title,
-            location: job.location,
-            type: job.type,
-            summary: job.summary
-          };
-
-          return job.id.startsWith("draft-")
-            ? createJob(savedCompany.slug, payload)
-            : updateJob(job.id, payload);
+          const payload = { title: job.title, location: job.location, type: job.type, summary: job.summary };
+          return job.id.startsWith("draft-") ? createJob(savedCompany.slug, payload) : updateJob(job.id, payload);
         })
       );
-
-      setCareerPage((current) => ({
-        ...current,
-        jobs: savedJobs
-      }));
-      setJobsStatus((current) => ({
-        ...current,
-        loading: false,
-        saving: false,
-        error: "",
-        success: "Job listings saved."
-      }));
-      setDashboardState((current) => ({ ...current, notice: `Connected to ${savedCompany.name}.` }));
+      setCareerPage((current) => ({ ...current, jobs: savedJobs }));
+      setSectionsStatus({ saving: false, error: "", success: "Sections and roles saved." });
     } catch (error) {
-      setJobsStatus((current) => ({
-        ...current,
-        saving: false,
-        error: getErrorMessage(error, "Failed to save job listings."),
-        success: ""
-      }));
+      setSectionsStatus({ saving: false, error: getErrorMessage(error, "Failed to save sections and roles."), success: "" });
     }
   };
 
-  const handleFilterChange = (field, value) => {
-    setJobFilters((current) => ({
-      ...current,
-      [field]: value
-    }));
+  const saveCurrentDraft = async () => {
+    if (activeSection === "brand") {
+      await saveBrand();
+      return;
+    }
+    if (activeSection === "sections") {
+      await saveSections();
+      return;
+    }
+    const savedCompany = await persistCompany();
+    await persistDraft(savedCompany.slug);
   };
 
-  const normalizedSearch = jobFilters.search.trim().toLowerCase();
-  const previewJobs = careerPage.jobs.filter((job) => {
-    const matchesSearch =
-      normalizedSearch.length === 0 || job.title.toLowerCase().includes(normalizedSearch);
-    const matchesLocation = !jobFilters.location || job.location === jobFilters.location;
-    const matchesType = !jobFilters.type || job.type === jobFilters.type;
+  const copyShareLink = async () => {
+    if (!selectedCompanySlug) return;
+    setShareState((current) => ({ ...current, loading: true, message: "" }));
+    try {
+      const link = await ensurePublishedShareLink();
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(link);
+      }
+      setShareState((current) => ({ ...current, loading: false, link, message: "Link copied successfully." }));
+    } catch (error) {
+      setShareState((current) => ({ ...current, loading: false, message: getErrorMessage(error, "Unable to copy the careers link right now.") }));
+    }
+  };
 
-    return matchesSearch && matchesLocation && matchesType;
-  });
+  const nativeShareLink = async () => {
+    if (!selectedCompanySlug) return;
+    setShareState((current) => ({ ...current, loading: true, message: "" }));
+    try {
+      const link = await ensurePublishedShareLink();
+      if (navigator.share) {
+        await navigator.share({ title: `${careerPage.company.name} Careers`, url: link });
+        setShareState((current) => ({ ...current, loading: false, link, message: "Shared successfully." }));
+      } else {
+        await copyShareLink();
+      }
+    } catch (error) {
+      setShareState((current) => ({ ...current, loading: false, message: getErrorMessage(error, "Unable to open share options right now.") }));
+    }
+  };
+
+  const ensurePublishedShareLink = async () => {
+    const savedCompany = await persistCompany();
+    await persistDraft(savedCompany.slug);
+    const published = await publishCareerPage(savedCompany.slug);
+    const link = published.careerPage.shareUrl;
+    setShareState((current) => ({ ...current, link }));
+    return link;
+  };
+
+  const saveOnly = async () => {
+    await saveCurrentDraft();
+    setIsSaveMenuOpen(false);
+  };
+
+  const sectionMeta = useMemo(() => ({
+    brand: {
+      eyebrow: "Brand Theme",
+      title: "Set the company look and feel",
+      description: "Control colors, banner presentation, logo appearance, and culture-video metadata from one panel.",
+      saveLabel: "Save Brand",
+      state: brandStatus,
+      onSave: saveBrand,
+      content: <CompanyEditor company={careerPage.company} themeSettings={careerPage.themeSettings} banner={careerPage.banner} selectedSlug={selectedCompanySlug} onCompanyChange={updateCompanyField} onThemeChange={updateThemeField} onBannerChange={updateBannerField} />
+    },
+    sections: {
+      eyebrow: "Content Sections",
+      title: "Build the page structure",
+      description: "Manage visible sections first, then configure the job roles that power the Open Roles experience.",
+      saveLabel: "Save Sections",
+      state: sectionsStatus,
+      onSave: saveSections,
+      content: (
+        <div className="space-y-6">
+          <SectionsEditor sections={careerPage.sections} onChange={updateSections} />
+          <div className="space-y-4 rounded-[24px] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] p-5">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-teal-700">Job Roles</p>
+              <h3 className="mt-2 text-lg font-semibold tracking-tight text-slate-950">Add or edit job roles</h3>
+            </div>
+            <JobsEditor jobs={careerPage.jobs} onUpdateJob={updateJobField} onAddJob={addJobDraft} />
+          </div>
+        </div>
+      )
+    },
+    preview: {
+      eyebrow: "Preview",
+      title: "Review the final page",
+      description: "Use the live preview to validate the careers experience before you publish or share it.",
+      saveLabel: "Save Draft",
+      state: sectionsStatus,
+      onSave: saveCurrentDraft,
+      content: null
+    }
+  }), [brandStatus, sectionsStatus, careerPage, selectedCompanySlug]);
+
+  const activeSectionMeta = sectionMeta[activeSection];
+  const desktopSections = dashboardSections.filter((section) => section.id !== "preview");
 
   return (
     <AppShell>
-      <DashboardNav
-        companyName={careerPage.company.name}
-        companyCount={companies.length}
-        onExit={onExit}
-      />
-      <main className="mx-auto max-w-7xl px-4 pb-28 pt-6 sm:px-6 lg:px-8 lg:pb-12">
-        <div className="grid gap-6 lg:grid-cols-[auto_1fr] lg:items-start">
-          <DashboardSidebar
-            sections={dashboardSections}
-            activeSection={activeSection}
-            isCollapsed={isSidebarCollapsed}
-            onToggle={() => setIsSidebarCollapsed((current) => !current)}
-            onSelect={setActiveSection}
-          />
+      <div className="xl:flex xl:h-screen xl:flex-col xl:overflow-hidden">
+        <BuilderHeader companyName={careerPage.company.name} onBack={onExit} onOpenSaveMenu={() => setIsSaveMenuOpen(true)} onOpenShareSheet={() => setIsShareSheetOpen(true)} />
+        <BuilderTabs sections={dashboardSections} activeSection={activeSection} onSelect={setActiveSection} className="xl:hidden" />
 
-          <div className="space-y-6">
-            {dashboardState.error ? (
-              <div className="rounded-[28px] border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700 shadow-[0_12px_30px_rgba(15,23,42,0.05)]">
-                {dashboardState.error}
+        <main className="mx-auto max-w-[110rem] overflow-x-clip px-4 pb-10 pt-5 sm:px-6 lg:px-8 xl:h-[calc(100vh-4.5rem)] xl:min-h-0 xl:flex-1 xl:overflow-hidden xl:pb-6 xl:pt-6">
+          {dashboardState.error ? <div className="mb-6 rounded-[24px] border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700 shadow-[0_12px_30px_rgba(15,23,42,0.05)]">{dashboardState.error}</div> : null}
+
+          <div className="grid min-w-0 gap-6 xl:h-full xl:min-h-0 xl:grid-cols-[minmax(0,1.12fr)_27rem] xl:items-stretch">
+            <section className={`min-w-0 space-y-4 ${activeSection === "preview" ? "order-1" : "order-2 xl:order-1"} ${activeSection !== "preview" ? "hidden xl:flex" : "block"} xl:min-h-0 xl:h-full xl:flex-col`}>
+              <div className="hidden xl:block">
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-teal-700">Live Preview</p>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">Preview the public careers page as you build it.</h2>
               </div>
-            ) : dashboardState.notice ? (
-              <div className="rounded-[28px] border border-sky-200 bg-sky-50 px-5 py-4 text-sm text-sky-700 shadow-[0_12px_30px_rgba(15,23,42,0.05)]">
-                {dashboardState.notice}
+              <div className="hide-scrollbar xl:min-h-0 xl:h-full xl:flex-1 xl:overflow-y-auto xl:pr-2">
+                <CareersPreview page={careerPage} jobsState={{ loading: dashboardState.loading, error: "" }} />
               </div>
-            ) : null}
+            </section>
 
-            <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-              <div className="space-y-6">
-                <CompanyPicker
-                  companies={companies}
-                  selectedSlug={selectedCompanySlug}
-                  onChange={setSelectedCompanySlug}
-                  disabled={dashboardState.loading || companies.length === 0}
-                />
-
+            <aside className={`min-w-0 ${activeSection === "preview" ? "hidden xl:block" : "block"} order-1 xl:min-h-0 xl:h-full`}>
+              <div className="hide-scrollbar space-y-5 xl:flex xl:h-full xl:min-h-0 xl:flex-col xl:overflow-y-auto xl:pr-2">
+                <BuilderTabs sections={desktopSections} activeSection={activeSection} onSelect={setActiveSection} compact className="hidden xl:grid xl:sticky xl:top-0 xl:z-10" />
                 {dashboardState.loading ? (
-                  <div className="rounded-[28px] border border-slate-200/80 bg-white px-6 py-12 text-sm text-slate-500 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
-                    Loading dashboard data...
+                  <div className="rounded-[28px] border border-slate-200/80 bg-white px-6 py-12 text-sm text-slate-500 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">Loading builder...</div>
+                ) : (
+                  <div className="space-y-6">
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-teal-700">{activeSectionMeta.eyebrow}</p>
+                      <h2 className="text-2xl font-semibold tracking-tight text-slate-950">{activeSectionMeta.title}</h2>
+                      <p className="text-sm leading-6 text-slate-500">{activeSectionMeta.description}</p>
+                    </div>
+                    {activeSectionMeta.content}
                   </div>
-                ) : null}
-
-                {!dashboardState.loading && activeSection === "company" && (
-                  <EditorCard
-                    title="Company details"
-                    description="Update the selected company identity and hero banner content."
-                    actions={
-                      <SectionActions
-                        label="Save company details"
-                        state={companyStatus}
-                        onSave={saveCompanyDetails}
-                      />
-                    }
-                  >
-                    <CompanyEditor
-                      company={careerPage.company}
-                      selectedSlug={selectedCompanySlug}
-                      onChange={updateCompanyField}
-                    />
-                  </EditorCard>
-                )}
-
-                {!dashboardState.loading && activeSection === "about" && (
-                  <EditorCard
-                    title="About section"
-                    description="Refine the story candidates read before they explore open roles."
-                    actions={
-                      <SectionActions
-                        label="Save about section"
-                        state={aboutStatus}
-                        onSave={saveAboutSection}
-                      />
-                    }
-                  >
-                    <AboutEditor value={careerPage.about} onChange={updateAbout} />
-                  </EditorCard>
-                )}
-
-                {!dashboardState.loading && activeSection === "jobs" && (
-                  <EditorCard
-                    title="Job listings"
-                    description="Edit the imported roles for the selected company and preview them instantly."
-                    actions={
-                      <SectionActions
-                        label="Save job listings"
-                        state={jobsStatus}
-                        onSave={saveJobsSection}
-                      />
-                    }
-                  >
-                    <JobsEditor
-                      jobs={careerPage.jobs}
-                      onUpdateJob={updateJobField}
-                      onAddJob={addJobDraft}
-                    />
-                  </EditorCard>
                 )}
               </div>
-
-              <div className="space-y-4">
-                <div className="rounded-[28px] border border-slate-200/80 bg-white p-5 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
-                  <p className="text-sm font-semibold text-slate-950">Editing focus</p>
-                  <p className="mt-1 text-sm leading-6 text-slate-500">
-                    Switch between imported companies, update their content, and preview each careers page in real time.
-                  </p>
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {dashboardSections.map((section) => {
-                      const isActive = section.id === activeSection;
-
-                      return (
-                        <button
-                          key={section.id}
-                          type="button"
-                          onClick={() => setActiveSection(section.id)}
-                          className={`rounded-full px-4 py-2 text-sm font-medium transition ${
-                            isActive
-                              ? "bg-slate-950 text-white"
-                              : "border border-slate-200 bg-slate-50 text-slate-600 hover:bg-white hover:text-slate-950"
-                          }`}
-                        >
-                          {section.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            <section className="space-y-4">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">Live preview</p>
-                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">
-                  Preview the selected public careers page as you edit.
-                </h2>
-              </div>
-              <CareersPreview
-                page={{
-                  ...careerPage,
-                  jobs: previewJobs
-                }}
-                filters={jobFilters}
-                onFilterChange={handleFilterChange}
-                jobsState={{
-                  loading: dashboardState.loading || jobsStatus.loading,
-                  error: jobsStatus.error && !jobsStatus.saving ? jobsStatus.error : ""
-                }}
-              />
-            </section>
+            </aside>
           </div>
-        </div>
-      </main>
-      <BottomTabs
-        sections={dashboardSections}
-        activeSection={activeSection}
-        onSelect={setActiveSection}
-      />
+        </main>
+
+        <MobileSaveMenu open={isSaveMenuOpen} onClose={() => setIsSaveMenuOpen(false)} onSaveDraft={async () => { await saveCurrentDraft(); setIsSaveMenuOpen(false); }} onSave={saveOnly} loading={brandStatus.saving || sectionsStatus.saving || shareState.loading} />
+        <ShareSheet open={isShareSheetOpen} link={shareState.link} message={shareState.message} loading={shareState.loading} onClose={() => setIsShareSheetOpen(false)} onCopy={copyShareLink} onNativeShare={nativeShareLink} />
+      </div>
     </AppShell>
   );
 }
-

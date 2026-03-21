@@ -1,6 +1,6 @@
-export default function BottomTabs({ sections, activeSection, onSelect }) {
+﻿export default function BottomTabs({ sections, activeSection, onSelect }) {
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200/80 bg-white/95 px-4 py-3 backdrop-blur lg:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200/80 bg-white/95 px-4 py-3 backdrop-blur xl:hidden">
       <div className="mx-auto flex max-w-xl items-center justify-between gap-2 rounded-[24px] border border-slate-200 bg-slate-50 p-2 shadow-[0_16px_40px_rgba(15,23,42,0.08)]">
         {sections.map((section) => {
           const isActive = section.id === activeSection;

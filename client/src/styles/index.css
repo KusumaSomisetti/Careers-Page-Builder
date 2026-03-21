@@ -1,4 +1,4 @@
-@import "tailwindcss";
+﻿@import "tailwindcss";
 
 :root {
   color-scheme: light;
@@ -13,6 +13,7 @@ body {
   background: #f8fafc;
   color: #0f172a;
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  overflow-x: hidden;
 }
 
 * {
@@ -26,4 +27,40 @@ a {
 
 button {
   font: inherit;
+}
+
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes careersReveal {
+  from {
+    opacity: 0;
+    transform: translateY(26px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.careers-reveal {
+  animation: careersReveal 720ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: transform, opacity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .careers-reveal {
+    animation: none;
+  }
 }

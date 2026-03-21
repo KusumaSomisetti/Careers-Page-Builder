@@ -1,4 +1,4 @@
-import axios from "axios";
+﻿import axios from "axios";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL ?? "/api",
@@ -36,6 +36,16 @@ export async function fetchCareerPageEditor(slug) {
   return response.data;
 }
 
+export async function updateCareerPageDraft(slug, payload) {
+  const response = await api.patch(`/companies/${slug}/career-page`, payload);
+  return response.data;
+}
+
+export async function publishCareerPage(slug) {
+  const response = await api.post(`/companies/${slug}/career-page/publish`);
+  return response.data;
+}
+
 export async function fetchCareerPageShareLink(slug) {
   const response = await api.get(`/companies/${slug}/career-page/share-link`);
   return response.data;
@@ -61,5 +71,17 @@ export async function createJob(companySlug, payload) {
 
 export async function updateJob(jobId, payload) {
   const response = await api.patch(`/jobs/${jobId}`, payload);
+  return response.data;
+}
+
+export async function fetchPublicCareerPage(slug, filters = {}) {
+  const response = await api.get(`/careers/${slug}`, {
+    params: {
+      location: filters.location,
+      type: filters.type,
+      search: filters.search
+    }
+  });
+
   return response.data;
 }
