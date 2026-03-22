@@ -401,11 +401,13 @@ export default function DashboardPage({ initialCompanySlug = "stripe", initialSe
     setCareerPage((current) => ({ ...current, sections }));
   };
 
-  const updateJobField = (jobId, field, value) => {
+  const updateJobField = (jobId, fieldOrUpdates, value) => {
+    const updates = typeof fieldOrUpdates === "string" ? { [fieldOrUpdates]: value } : fieldOrUpdates;
+
     setSectionsStatus(createEmptyStatus());
     setCareerPage((current) => ({
       ...current,
-      jobs: current.jobs.map((job) => (job.id === jobId ? { ...job, [field]: value } : job))
+      jobs: current.jobs.map((job) => (job.id === jobId ? { ...job, ...updates } : job))
     }));
   };
 
@@ -506,6 +508,7 @@ export default function DashboardPage({ initialCompanySlug = "stripe", initialSe
     try {
       const savedCompany = await persistCompany();
       await persistDraft(savedCompany.slug);
+      await persistPublishedJobs(savedCompany.slug);
       setEditorStatuses({ saving: false, error: "", success: "Draft saved." });
     } catch (error) {
       setEditorStatuses({ saving: false, error: getErrorMessage(error, "Failed to save draft."), success: "" });

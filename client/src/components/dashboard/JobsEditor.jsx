@@ -36,13 +36,22 @@ function ModeCard({ active, title, onClick }) {
 export default function JobsEditor({ jobs, onUpdateJob, onAddJob, onDeleteJob }) {
   const [mode, setMode] = useState(jobs.length > 0 ? "edit" : "add");
   const [selectedJobId, setSelectedJobId] = useState(jobs[0]?.id || "");
+  const [draftJob, setDraftJob] = useState(() => ({
+    title: jobs[0]?.title || "",
+    location: jobs[0]?.location || "",
+    type: jobs[0]?.type || "",
+    summary: jobs[0]?.summary || ""
+  }));
   const previousCountRef = useRef(jobs.length);
+  const previousSelectedJobIdRef = useRef(jobs[0]?.id || "");
 
   useEffect(() => {
     if (!jobs.length) {
       setMode("add");
       setSelectedJobId("");
+      setDraftJob({ title: "", location: "", type: "", summary: "" });
       previousCountRef.current = 0;
+      previousSelectedJobIdRef.current = "";
       return;
     }
 
@@ -59,6 +68,46 @@ export default function JobsEditor({ jobs, onUpdateJob, onAddJob, onDeleteJob })
   }, [jobs, selectedJobId]);
 
   const selectedJob = jobs.find((job) => job.id === selectedJobId) || null;
+
+  useEffect(() => {
+    if (!selectedJob) {
+      setDraftJob({ title: "", location: "", type: "", summary: "" });
+      previousSelectedJobIdRef.current = "";
+      return;
+    }
+
+    if (previousSelectedJobIdRef.current !== selectedJob.id) {
+      setDraftJob({
+        title: selectedJob.title || "",
+        location: selectedJob.location || "",
+        type: selectedJob.type || "",
+        summary: selectedJob.summary || ""
+      });
+      previousSelectedJobIdRef.current = selectedJob.id;
+    }
+  }, [selectedJob]);
+
+  useEffect(() => {
+    if (!selectedJob) {
+      return undefined;
+    }
+
+    const hasChanges =
+      draftJob.title !== (selectedJob.title || "") ||
+      draftJob.location !== (selectedJob.location || "") ||
+      draftJob.type !== (selectedJob.type || "") ||
+      draftJob.summary !== (selectedJob.summary || "");
+
+    if (!hasChanges) {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      onUpdateJob(selectedJob.id, draftJob);
+    }, 180);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [draftJob, onUpdateJob, selectedJob]);
 
   return (
     <div className="space-y-5">
@@ -127,28 +176,28 @@ export default function JobsEditor({ jobs, onUpdateJob, onAddJob, onDeleteJob })
               <div className="grid gap-4 sm:grid-cols-2">
                 <JobField
                   label="Job title"
-                  value={selectedJob.title}
-                  onChange={(value) => onUpdateJob(selectedJob.id, "title", value)}
+                  value={draftJob.title}
+                  onChange={(value) => setDraftJob((current) => ({ ...current, title: value }))}
                   placeholder="Frontend Engineer"
                 />
                 <JobField
                   label="Location"
-                  value={selectedJob.location}
-                  onChange={(value) => onUpdateJob(selectedJob.id, "location", value)}
+                  value={draftJob.location}
+                  onChange={(value) => setDraftJob((current) => ({ ...current, location: value }))}
                   placeholder="Remote"
                 />
                 <JobField
                   label="Job type"
-                  value={selectedJob.type}
-                  onChange={(value) => onUpdateJob(selectedJob.id, "type", value)}
+                  value={draftJob.type}
+                  onChange={(value) => setDraftJob((current) => ({ ...current, type: value }))}
                   placeholder="Full-time"
                 />
                 <div className="sm:col-span-2">
                   <label className="block space-y-2">
                     <span className="text-sm font-medium text-slate-700">Short description</span>
                     <textarea
-                      value={selectedJob.summary}
-                      onChange={(event) => onUpdateJob(selectedJob.id, "summary", event.target.value)}
+                      value={draftJob.summary}
+                      onChange={(event) => setDraftJob((current) => ({ ...current, summary: event.target.value }))}
                       rows={4}
                       placeholder="Describe the role in one short paragraph."
                       className="w-full rounded-[18px] border border-slate-200 bg-white px-4 py-3 text-sm leading-7 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300"
