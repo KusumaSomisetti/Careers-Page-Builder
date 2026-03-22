@@ -1,7 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  faArrowLeft,
   faCheck,
   faFloppyDisk,
   faLink,
@@ -14,6 +13,7 @@ import SectionsEditor from "../components/dashboard/SectionsEditor";
 import JobsEditor from "../components/dashboard/JobsEditor";
 import AppShell from "../components/dashboard/AppShell";
 import CareersPreview from "../components/preview/CareersPreview";
+import { DashboardPanelSkeleton } from "../components/Skeleton";
 import { dashboardSections, initialCareerPage } from "../data/careers";
 import {
   createCompany,
@@ -71,8 +71,14 @@ function createEmptyStatus() {
 }
 
 function BuilderTabs({ sections, activeSection, onSelect, className = "", compact = false }) {
+  const containerClasses = compact
+    ? "flex min-h-12 items-center gap-6 border-b border-slate-200/80 bg-white px-4 py-2"
+    : "hide-scrollbar flex gap-2 overflow-x-auto border-b border-slate-200/80 bg-white px-4 py-3 sm:px-6 lg:px-8";
+
+  const buttonClasses = compact ? "border-b-2 px-1.5 py-2 leading-6" : "border-b-2 px-1.5 pb-2 pt-1";
+
   return (
-    <div className={`${compact ? "grid w-full grid-cols-2 gap-2 rounded-[20px] border border-slate-200 bg-white/98 p-2 shadow-[0_10px_24px_rgba(15,23,42,0.05)]" : "hide-scrollbar flex gap-2 overflow-x-auto border-b border-slate-200/80 bg-white px-4 py-3 sm:px-6 lg:px-8"} ${className}`.trim()}>
+    <div className={`${containerClasses} ${className}`.trim()}>
       {sections.map((section) => {
         const isActive = section.id === activeSection;
 
@@ -81,14 +87,10 @@ function BuilderTabs({ sections, activeSection, onSelect, className = "", compac
             key={section.id}
             type="button"
             onClick={() => onSelect(section.id)}
-            className={`${compact ? "flex items-center justify-center rounded-[14px] px-4 py-3 text-center" : "border-b-2 px-1.5 pb-2 pt-1"} shrink-0 text-sm font-medium transition ${
+            className={`${buttonClasses} shrink-0 whitespace-nowrap text-sm font-medium transition ${
               isActive
-                ? compact
-                  ? "bg-slate-950 text-white"
-                  : "border-slate-950 text-slate-950"
-                : compact
-                  ? "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
-                  : "border-transparent text-slate-400 hover:text-slate-700"
+                ? "border-slate-950 text-slate-950"
+                : "border-transparent text-slate-400 hover:text-slate-700"
             }`}
           >
             {section.label}
@@ -99,18 +101,23 @@ function BuilderTabs({ sections, activeSection, onSelect, className = "", compac
   );
 }
 
-function BuilderHeader({ companyName, onBack, onOpenSaveMenu, onOpenShareSheet }) {
+function formatCompanyLabel(slug, companyName) {
+  if (companyName) return companyName;
+  if (!slug) return "Company";
+  return slug
+    .split("-")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function BuilderHeader({ companyName, companySlug, onOpenSaveMenu, onOpenShareSheet }) {
   return (
     <header className="border-b border-slate-200/80 bg-white px-4 py-3 sm:px-6 lg:px-8">
       <div className="flex items-center justify-between gap-3">
-        <button
-          type="button"
-          onClick={onBack}
-          className="inline-flex items-center gap-2 text-sm font-medium text-slate-700"
-        >
-          <FontAwesomeIcon icon={faArrowLeft} className="text-base" />
-          <span className="truncate">{companyName || "Company"}</span>
-        </button>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium text-slate-700">{formatCompanyLabel(companySlug, companyName)}</p>
+        </div>
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -134,15 +141,15 @@ function BuilderHeader({ companyName, onBack, onOpenSaveMenu, onOpenShareSheet }
   );
 }
 
-function MobileSaveMenu({ open, onClose, onSaveDraft, onSave, loading }) {
+function SaveMenu({ open, onClose, onSaveDraft, onSave, loading }) {
   if (!open) {
     return null;
   }
 
   return (
-    <div className="fixed inset-0 z-50 xl:hidden">
+    <div className="fixed inset-0 z-50">
       <button type="button" className="absolute inset-0 bg-slate-950/20" onClick={onClose} aria-label="Close save menu" />
-      <div className="absolute right-4 top-16 w-48 rounded-[20px] border border-slate-200 bg-white p-2 shadow-[0_20px_50px_rgba(15,23,42,0.18)]">
+      <div className="absolute right-4 top-16 w-48 rounded-[20px] border border-slate-200 bg-white p-2 shadow-[0_20px_50px_rgba(15,23,42,0.18)] sm:right-6 lg:right-8">
         <button
           type="button"
           onClick={onSaveDraft}
@@ -173,28 +180,28 @@ function ShareSheet({ open, link, message, loading, onClose, onCopy, onNativeSha
 
   return (
     <div className="fixed inset-0 z-50">
-      <button type="button" className="absolute inset-0 bg-slate-950/30" onClick={onClose} aria-label="Close share sheet" />
-      <div className="absolute inset-x-0 bottom-0 rounded-t-[28px] bg-white p-5 shadow-[0_-20px_50px_rgba(15,23,42,0.20)] sm:left-1/2 sm:right-auto sm:w-[28rem] sm:-translate-x-1/2 sm:rounded-[28px] sm:bottom-6">
-        <div className="flex items-center justify-between gap-4">
+      <button type="button" className="absolute inset-0 bg-slate-950/20" onClick={onClose} aria-label="Close share sheet" />
+      <div className="absolute right-4 top-16 w-[20rem] rounded-[20px] border border-slate-200 bg-white p-3 shadow-[0_20px_50px_rgba(15,23,42,0.18)] sm:right-6 lg:right-8">
+        <div className="flex items-start justify-between gap-4 px-1 pb-3">
           <div>
             <p className="text-sm font-semibold text-slate-950">Share careers page</p>
             <p className="mt-1 text-sm text-slate-500">Choose how you want to share this link.</p>
           </div>
-          <button type="button" onClick={onClose} className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-600">
+          <button type="button" onClick={onClose} className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-600">
             <FontAwesomeIcon icon={faXmark} />
           </button>
         </div>
 
-        <div className="mt-4 break-all rounded-[18px] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+        <div className="break-all rounded-[16px] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
           {link || "Preparing your careers page link..."}
         </div>
 
-        <div className="mt-4 space-y-3">
+        <div className="mt-3 space-y-2">
           <button
             type="button"
             onClick={onCopy}
             disabled={loading}
-            className="flex w-full items-center gap-3 rounded-[18px] border border-slate-200 bg-white px-4 py-4 text-left text-sm font-medium text-slate-700 transition hover:border-slate-300 disabled:opacity-60"
+            className="flex w-full items-center gap-3 rounded-[16px] px-4 py-3 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
           >
             <FontAwesomeIcon icon={faLink} />
             <span>Copy link</span>
@@ -203,21 +210,21 @@ function ShareSheet({ open, link, message, loading, onClose, onCopy, onNativeSha
             type="button"
             onClick={onNativeShare}
             disabled={loading}
-            className="flex w-full items-center gap-3 rounded-[18px] border border-slate-200 bg-white px-4 py-4 text-left text-sm font-medium text-slate-700 transition hover:border-slate-300 disabled:opacity-60"
+            className="flex w-full items-center gap-3 rounded-[16px] px-4 py-3 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
           >
             <FontAwesomeIcon icon={faPaperPlane} />
             <span>Share with apps</span>
           </button>
         </div>
 
-        {message ? <p className="mt-4 text-sm text-slate-500">{message}</p> : null}
+        {message ? <p className="px-1 pt-3 text-sm text-slate-500">{message}</p> : null}
       </div>
     </div>
   );
 }
 
-export default function DashboardPage({ initialCompanySlug = "stripe", onExit }) {
-  const [activeSection, setActiveSection] = useState("brand");
+export default function DashboardPage({ initialCompanySlug = "stripe", initialSection = "brand", onSectionChange, onExit }) {
+  const [activeSection, setActiveSection] = useState(initialSection || "brand");
   const [careerPage, setCareerPage] = useState(initialCareerPage);
   const [selectedCompanySlug, setSelectedCompanySlug] = useState(initialCompanySlug || "");
   const [companyExists, setCompanyExists] = useState(false);
@@ -233,27 +240,13 @@ export default function DashboardPage({ initialCompanySlug = "stripe", onExit })
   }, [initialCompanySlug]);
 
   useEffect(() => {
-    if (typeof window === "undefined") {
-      return undefined;
-    }
+    setActiveSection(initialSection || "brand");
+  }, [initialSection]);
 
-    const media = window.matchMedia("(min-width: 1280px)");
-    const syncDesktopSection = (event) => {
-      if (event.matches) {
-        setActiveSection((current) => (current === "preview" ? "brand" : current));
-      }
-    };
-
-    syncDesktopSection(media);
-
-    if (typeof media.addEventListener === "function") {
-      media.addEventListener("change", syncDesktopSection);
-      return () => media.removeEventListener("change", syncDesktopSection);
-    }
-
-    media.addListener(syncDesktopSection);
-    return () => media.removeListener(syncDesktopSection);
-  }, []);
+  const selectSection = (section) => {
+    setActiveSection(section);
+    onSectionChange?.(section);
+  };
 
   useEffect(() => {
     if (!selectedCompanySlug) {
@@ -328,7 +321,7 @@ export default function DashboardPage({ initialCompanySlug = "stripe", onExit })
   const addJobDraft = () => {
     setSectionsStatus(createEmptyStatus());
     setCareerPage((current) => ({ ...current, jobs: [...current.jobs, createDraftJob(current.jobs.length + 1)] }));
-    setActiveSection("sections");
+    selectSection("sections");
   };
 
   const persistCompany = async () => {
@@ -486,7 +479,7 @@ export default function DashboardPage({ initialCompanySlug = "stripe", onExit })
       onSave: saveSections,
       content: (
         <div className="space-y-6">
-          <SectionsEditor sections={careerPage.sections} onChange={updateSections} />
+          <SectionsEditor sections={careerPage.sections} selectedSlug={selectedCompanySlug} onChange={updateSections} />
           <div className="space-y-4 rounded-[24px] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] p-5">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-teal-700">Job Roles</p>
@@ -514,8 +507,8 @@ export default function DashboardPage({ initialCompanySlug = "stripe", onExit })
   return (
     <AppShell>
       <div className="xl:flex xl:h-screen xl:flex-col xl:overflow-hidden">
-        <BuilderHeader companyName={careerPage.company.name} onBack={onExit} onOpenSaveMenu={() => setIsSaveMenuOpen(true)} onOpenShareSheet={() => setIsShareSheetOpen(true)} />
-        <BuilderTabs sections={dashboardSections} activeSection={activeSection} onSelect={setActiveSection} className="xl:hidden" />
+        <BuilderHeader companyName={careerPage.company.name} companySlug={selectedCompanySlug || initialCompanySlug} onOpenSaveMenu={() => setIsSaveMenuOpen(true)} onOpenShareSheet={() => setIsShareSheetOpen(true)} />
+        <BuilderTabs sections={dashboardSections} activeSection={activeSection} onSelect={selectSection} className="xl:hidden" />
 
         <main className="mx-auto max-w-[110rem] overflow-x-clip px-4 pb-10 pt-5 sm:px-6 lg:px-8 xl:h-[calc(100vh-4.5rem)] xl:min-h-0 xl:flex-1 xl:overflow-hidden xl:pb-6 xl:pt-6">
           {dashboardState.error ? <div className="mb-6 rounded-[24px] border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700 shadow-[0_12px_30px_rgba(15,23,42,0.05)]">{dashboardState.error}</div> : null}
@@ -533,25 +526,21 @@ export default function DashboardPage({ initialCompanySlug = "stripe", onExit })
 
             <aside className={`min-w-0 ${activeSection === "preview" ? "hidden xl:block" : "block"} order-1 xl:min-h-0 xl:h-full`}>
               <div className="hide-scrollbar space-y-5 xl:flex xl:h-full xl:min-h-0 xl:flex-col xl:overflow-y-auto xl:pr-2">
-                <BuilderTabs sections={desktopSections} activeSection={activeSection} onSelect={setActiveSection} compact className="hidden xl:grid xl:sticky xl:top-0 xl:z-10" />
-                {dashboardState.loading ? (
-                  <div className="rounded-[28px] border border-slate-200/80 bg-white px-6 py-12 text-sm text-slate-500 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">Loading builder...</div>
-                ) : (
-                  <div className="space-y-6">
-                    <div className="space-y-2">
-                      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-teal-700">{activeSectionMeta.eyebrow}</p>
-                      <h2 className="text-2xl font-semibold tracking-tight text-slate-950">{activeSectionMeta.title}</h2>
-                      <p className="text-sm leading-6 text-slate-500">{activeSectionMeta.description}</p>
-                    </div>
-                    {activeSectionMeta.content}
+                <BuilderTabs sections={desktopSections} activeSection={activeSection} onSelect={selectSection} compact className="hidden xl:flex xl:sticky xl:top-0 xl:z-10 xl:w-full xl:px-0" />
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-teal-700">{activeSectionMeta.eyebrow}</p>
+                    <h2 className="text-2xl font-semibold tracking-tight text-slate-950">{activeSectionMeta.title}</h2>
+                    <p className="text-sm leading-6 text-slate-500">{activeSectionMeta.description}</p>
                   </div>
-                )}
+                  {dashboardState.loading ? <DashboardPanelSkeleton section={activeSection} /> : activeSectionMeta.content}
+                </div>
               </div>
             </aside>
           </div>
         </main>
 
-        <MobileSaveMenu open={isSaveMenuOpen} onClose={() => setIsSaveMenuOpen(false)} onSaveDraft={async () => { await saveCurrentDraft(); setIsSaveMenuOpen(false); }} onSave={saveOnly} loading={brandStatus.saving || sectionsStatus.saving || shareState.loading} />
+        <SaveMenu open={isSaveMenuOpen} onClose={() => setIsSaveMenuOpen(false)} onSaveDraft={async () => { await saveCurrentDraft(); setIsSaveMenuOpen(false); }} onSave={saveOnly} loading={brandStatus.saving || sectionsStatus.saving || shareState.loading} />
         <ShareSheet open={isShareSheetOpen} link={shareState.link} message={shareState.message} loading={shareState.loading} onClose={() => setIsShareSheetOpen(false)} onCopy={copyShareLink} onNativeShare={nativeShareLink} />
       </div>
     </AppShell>

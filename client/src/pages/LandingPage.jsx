@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
+import { faChevronDown, faChevronUp, faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
 import AppShell from "../components/dashboard/AppShell";
 import BrandMark from "../components/BrandMark";
-import { fetchCareerPageEditor, fetchCompanies, fetchJobs, getErrorMessage } from "../services/api";
+import { fetchCompanies, fetchJobs, getErrorMessage } from "../services/api";
+import { CardRowSkeleton, JobGridSkeleton, Skeleton } from "../components/Skeleton";
 
 function LockIcon() {
   return (
@@ -14,15 +15,53 @@ function LockIcon() {
   );
 }
 
-function CompanyLogo({ company, brand }) {
-  if (brand?.logoImageUrl) {
-    return <img src={brand.logoImageUrl} alt={company.name} className="h-20 w-20 rounded-[22px] object-cover sm:h-24 sm:w-24" />;
+function useAnimatedCount(target, enabled) {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    if (!enabled) {
+      setCount(0);
+      return;
+    }
+
+    if (target <= 0) {
+      setCount(0);
+      return;
+    }
+
+    let frameId;
+    const duration = 900;
+    const startValue = target > 0 ? 1 : 0;
+    const startTime = performance.now();
+
+    const tick = (currentTime) => {
+      const progress = Math.min((currentTime - startTime) / duration, 1);
+      const easedProgress = 1 - (1 - progress) * (1 - progress);
+      const nextValue = Math.round(startValue + (target - startValue) * easedProgress);
+      setCount(progress >= 1 ? target : nextValue);
+
+      if (progress < 1) {
+        frameId = window.requestAnimationFrame(tick);
+      }
+    };
+
+    frameId = window.requestAnimationFrame(tick);
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [enabled, target]);
+
+  return count;
+}
+
+function CompanyLogo({ company }) {
+  if (company.logoImageUrl) {
+    return <img src={company.logoImageUrl} alt={company.name} className="h-20 w-20 rounded-[22px] object-cover sm:h-24 sm:w-24" />;
   }
 
-  if (brand?.logoText || company.logo) {
+  if (company.logoText || company.logo) {
     return (
       <span className="text-2xl font-semibold uppercase tracking-[0.2em] text-slate-700 sm:text-3xl">
-        {(brand?.logoText || company.logo || company.name.slice(0, 2)).slice(0, 3)}
+        {(company.logoText || company.logo || company.name.slice(0, 2)).slice(0, 3)}
       </span>
     );
   }
@@ -30,18 +69,48 @@ function CompanyLogo({ company, brand }) {
   return <BrandMark />;
 }
 
-function CompanyCard({ company, openRoles, brand, onOpen }) {
+function SnapshotValue({ label, value, loading }) {
+  const animatedValue = useAnimatedCount(value, !loading);
+
+  return (
+    <div className="rounded-[24px] bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.05)]">
+      {loading ? <Skeleton className="h-9 w-16 rounded-xl" /> : <p className="text-3xl font-semibold tracking-tight text-slate-950">{animatedValue}</p>}
+      <p className="mt-2 text-sm text-slate-500">{label}</p>
+    </div>
+  );
+}
+
+function CompanyCard({ company, openRoles, onOpen }) {
   return (
     <button
       type="button"
-      onClick={() => onOpen(company.slug)}
+      onClick={() => onOpen(company)}
       className="w-[260px] shrink-0 rounded-[26px] border border-slate-200/90 bg-white p-5 text-left shadow-[0_12px_36px_rgba(15,23,42,0.08)] transition hover:-translate-y-1 hover:shadow-[0_18px_50px_rgba(15,23,42,0.12)] sm:w-[300px] lg:w-[340px]"
     >
       <div className="mb-5 flex h-32 items-center justify-center rounded-[18px] bg-[linear-gradient(180deg,#eef2f7_0%,#e2e8f0_100%)] text-slate-400 shadow-inner sm:h-36 lg:h-40">
-        <CompanyLogo company={company} brand={brand} />
+        <CompanyLogo company={company} />
       </div>
       <p className="text-[1.7rem] font-semibold tracking-tight text-slate-950 sm:text-[1.9rem]">{company.name}</p>
       <p className="mt-1 text-[1.1rem] text-slate-700">{openRoles} Open Roles</p>
+    </button>
+  );
+}
+
+function ExpandedCompanyCard({ company, openRoles, onOpen }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(company)}
+      className="flex w-full items-center gap-4 rounded-[24px] border border-slate-200/90 bg-white p-4 text-left shadow-[0_12px_36px_rgba(15,23,42,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_42px_rgba(15,23,42,0.10)] sm:p-5"
+    >
+      <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-[18px] bg-[linear-gradient(180deg,#eef2f7_0%,#e2e8f0_100%)] text-slate-400 shadow-inner sm:h-24 sm:w-24">
+        <CompanyLogo company={company} />
+      </div>
+      <div className="min-w-0">
+        <p className="text-xl font-semibold tracking-tight text-slate-950 sm:text-2xl">{company.name}</p>
+        <p className="mt-1 text-sm text-slate-500 sm:text-base">{openRoles} Open roles</p>
+        <p className="mt-2 text-sm leading-6 text-slate-500">Open the public careers page to explore the company experience.</p>
+      </div>
     </button>
   );
 }
@@ -58,10 +127,11 @@ function JobResultCard({ job }) {
 }
 
 export default function LandingPage({ onRecruiterLogin }) {
-  const [searchValue, setSearchValue] = useState("");
+  const [jobSearchValue, setJobSearchValue] = useState("");
+  const [companySearchValue, setCompanySearchValue] = useState("");
+  const [companiesExpanded, setCompaniesExpanded] = useState(false);
   const [companies, setCompanies] = useState([]);
   const [jobs, setJobs] = useState([]);
-  const [companyBrands, setCompanyBrands] = useState({});
   const [state, setState] = useState({ loading: true, error: "" });
 
   useEffect(() => {
@@ -72,30 +142,6 @@ export default function LandingPage({ onRecruiterLogin }) {
 
       try {
         const [companyList, jobList] = await Promise.all([fetchCompanies(), fetchJobs()]);
-        const brandEntries = await Promise.all(
-          companyList.map(async (company) => {
-            try {
-              const editorPage = await fetchCareerPageEditor(company.slug);
-              return [
-                company.slug,
-                {
-                  logoImageUrl: editorPage.careerPage.draft.themeSettings?.logoImageUrl || "",
-                  logoText: editorPage.careerPage.draft.themeSettings?.logoText || company.logo || "",
-                  shareUrl: editorPage.careerPage.shareUrl || `${window.location.origin}/careers/${company.slug}`
-                }
-              ];
-            } catch {
-              return [
-                company.slug,
-                {
-                  logoImageUrl: "",
-                  logoText: company.logo || "",
-                  shareUrl: `${window.location.origin}/careers/${company.slug}`
-                }
-              ];
-            }
-          })
-        );
 
         if (isCancelled) {
           return;
@@ -103,7 +149,6 @@ export default function LandingPage({ onRecruiterLogin }) {
 
         setCompanies(companyList);
         setJobs(jobList);
-        setCompanyBrands(Object.fromEntries(brandEntries));
         setState({ loading: false, error: "" });
       } catch (error) {
         if (isCancelled) {
@@ -124,7 +169,8 @@ export default function LandingPage({ onRecruiterLogin }) {
     };
   }, []);
 
-  const normalizedQuery = searchValue.trim().toLowerCase();
+  const normalizedJobQuery = jobSearchValue.trim().toLowerCase();
+  const normalizedCompanyQuery = companySearchValue.trim().toLowerCase();
 
   const roleCounts = useMemo(() => {
     return jobs.reduce((accumulator, job) => {
@@ -138,31 +184,26 @@ export default function LandingPage({ onRecruiterLogin }) {
     }, {});
   }, [jobs]);
 
-  const filteredCompanies = useMemo(() => {
-    if (!normalizedQuery) {
+  const featuredCompanies = useMemo(() => companies.slice(0, 8), [companies]);
+
+  const expandedCompanies = useMemo(() => {
+    if (!normalizedCompanyQuery) {
       return companies;
     }
 
-    return companies.filter((company) => company.name.toLowerCase().includes(normalizedQuery));
-  }, [companies, normalizedQuery]);
+    return companies.filter((company) => company.name.toLowerCase().includes(normalizedCompanyQuery));
+  }, [companies, normalizedCompanyQuery]);
 
   const filteredJobs = useMemo(() => {
-    if (!normalizedQuery) {
+    if (!normalizedJobQuery) {
       return jobs;
     }
 
-    return jobs.filter((job) => {
-      const companyName = job.company?.name?.toLowerCase() || "";
-      return (
-        job.title.toLowerCase().includes(normalizedQuery) ||
-        companyName.includes(normalizedQuery) ||
-        (job.summary || "").toLowerCase().includes(normalizedQuery)
-      );
-    });
-  }, [jobs, normalizedQuery]);
+    return jobs.filter((job) => job.title.toLowerCase().includes(normalizedJobQuery));
+  }, [jobs, normalizedJobQuery]);
 
-  const openCompanyCareers = (companySlug) => {
-    const shareUrl = companyBrands[companySlug]?.shareUrl || `${window.location.origin}/careers/${companySlug}`;
+  const openCompanyCareers = (company) => {
+    const shareUrl = company.shareUrl || `${window.location.origin}/careers/${company.slug}`;
     window.open(shareUrl, "_blank", "noopener,noreferrer");
   };
 
@@ -193,19 +234,6 @@ export default function LandingPage({ onRecruiterLogin }) {
               Find your next chapter.
             </h1>
 
-            <div className="mt-7 rounded-[24px] border-[4px] border-slate-400/75 bg-white/90 px-4 py-4 shadow-[0_12px_36px_rgba(15,23,42,0.06)] sm:px-6 sm:py-5">
-              <label className="flex items-center gap-4 text-slate-500 sm:gap-5">
-                <FontAwesomeIcon icon={faMagnifyingGlass} className="text-[1.5rem] text-teal-600 sm:text-[1.75rem]" />
-                <input
-                  type="text"
-                  value={searchValue}
-                  onChange={(event) => setSearchValue(event.target.value)}
-                  placeholder="Search jobs, keywords, or companies..."
-                  className="min-w-0 flex-1 bg-transparent text-[1.2rem] leading-tight text-slate-600 outline-none placeholder:text-slate-500 sm:text-[1.55rem] lg:text-[1.75rem]"
-                />
-              </label>
-            </div>
-
             <div className="mt-6 grid gap-3 sm:grid-cols-2 sm:gap-4">
               <a
                 href="#roles"
@@ -225,17 +253,11 @@ export default function LandingPage({ onRecruiterLogin }) {
           <div className="mt-8 rounded-[32px] border border-white/80 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.96),_rgba(226,232,240,0.68))] p-5 shadow-[0_20px_60px_rgba(15,23,42,0.08)] sm:p-6 lg:mt-1">
             <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-400">HirePoint Snapshot</p>
             <div className="mt-4 grid grid-cols-2 gap-4">
-              <div className="rounded-[24px] bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.05)]">
-                <p className="text-3xl font-semibold tracking-tight text-slate-950">{companies.length}</p>
-                <p className="mt-2 text-sm text-slate-500">Featured companies</p>
-              </div>
-              <div className="rounded-[24px] bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.05)]">
-                <p className="text-3xl font-semibold tracking-tight text-slate-950">{jobs.length}</p>
-                <p className="mt-2 text-sm text-slate-500">Live roles</p>
-              </div>
+              <SnapshotValue label="Featured companies" value={companies.length} loading={state.loading} />
+              <SnapshotValue label="Live roles" value={jobs.length} loading={state.loading} />
             </div>
             <p className="mt-4 text-sm leading-7 text-slate-600">
-              Explore curated career experiences, search roles across top software teams, and jump into the recruiter workspace when you need to edit content.
+              Explore curated career experiences, discover standout software teams, and jump into the recruiter workspace when you need to edit content.
             </p>
           </div>
         </section>
@@ -253,49 +275,98 @@ export default function LandingPage({ onRecruiterLogin }) {
                 Featured Companies
               </h2>
               <p className="mt-3 text-base text-slate-500 sm:text-lg">
-                {normalizedQuery ? "Matching companies from your search." : "Hand-picked software teams hiring right now."}
+                Hand-picked software teams hiring right now.
               </p>
             </div>
+
+            {companies.length > 8 ? (
+              <button
+                type="button"
+                onClick={() => setCompaniesExpanded((current) => !current)}
+                className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-[0_10px_24px_rgba(15,23,42,0.06)] transition hover:border-slate-300 hover:text-slate-950"
+              >
+                <span>{companiesExpanded ? "Collapse list" : "View all companies"}</span>
+                <FontAwesomeIcon icon={companiesExpanded ? faChevronUp : faChevronDown} />
+              </button>
+            ) : null}
           </div>
 
           {state.loading ? (
-            <div className="mt-8 rounded-[26px] border border-slate-200/80 bg-white px-6 py-10 text-center text-sm text-slate-500 shadow-[0_12px_36px_rgba(15,23,42,0.06)]">
-              Loading featured companies...
-            </div>
-          ) : filteredCompanies.length > 0 ? (
+            <CardRowSkeleton />
+          ) : featuredCompanies.length > 0 ? (
             <div className="hide-scrollbar mt-8 flex snap-x gap-5 overflow-x-auto pb-3">
-              {filteredCompanies.map((company) => (
+              {featuredCompanies.map((company) => (
                 <div key={company.slug} className="snap-start">
-                  <CompanyCard
-                    company={company}
-                    openRoles={roleCounts[company.slug] || 0}
-                    brand={companyBrands[company.slug]}
-                    onOpen={openCompanyCareers}
-                  />
+                  <CompanyCard company={company} openRoles={roleCounts[company.slug] || 0} onOpen={openCompanyCareers} />
                 </div>
               ))}
             </div>
           ) : (
             <div className="mt-8 rounded-[26px] border border-slate-200/80 bg-white px-6 py-10 text-center text-sm text-slate-500 shadow-[0_12px_36px_rgba(15,23,42,0.06)]">
-              No companies matched your search.
+              No featured companies are available right now.
             </div>
           )}
+
+          {companiesExpanded ? (
+            <div className="mt-8 rounded-[30px] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] p-5 shadow-[0_18px_50px_rgba(15,23,42,0.06)] sm:p-6">
+              <div className="rounded-[22px] border border-slate-200 bg-white px-4 py-3.5 shadow-[0_10px_28px_rgba(15,23,42,0.04)]">
+                <label className="flex items-center gap-3 text-slate-500">
+                  <FontAwesomeIcon icon={faMagnifyingGlass} className="text-base text-teal-600" />
+                  <input
+                    type="text"
+                    value={companySearchValue}
+                    onChange={(event) => setCompanySearchValue(event.target.value)}
+                    placeholder="Search companies"
+                    className="min-w-0 flex-1 bg-transparent text-base text-slate-700 outline-none placeholder:text-slate-400"
+                  />
+                </label>
+              </div>
+
+              {expandedCompanies.length > 0 ? (
+                <div className="mt-5 space-y-4">
+                  {expandedCompanies.map((company) => (
+                    <ExpandedCompanyCard
+                      key={company.slug}
+                      company={company}
+                      openRoles={roleCounts[company.slug] || 0}
+                      onOpen={openCompanyCareers}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="mt-5 rounded-[24px] border border-slate-200/80 bg-white px-6 py-10 text-center text-sm text-slate-500 shadow-[0_12px_36px_rgba(15,23,42,0.05)]">
+                  No companies matched your search.
+                </div>
+              )}
+            </div>
+          ) : null}
         </section>
 
         <section id="roles" className="pt-14 sm:pt-16">
           <div>
             <h2 className="text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl lg:text-[3.2rem]">
-              Browse Roles
+              Current Opportunities
             </h2>
             <p className="mt-3 text-base text-slate-500 sm:text-lg">
-              Search results update instantly across jobs and companies.
+              Search by job role and browse the latest openings across featured teams.
             </p>
           </div>
 
+          <div className="mt-7 rounded-[24px] border-[4px] border-slate-400/75 bg-white/90 px-4 py-4 shadow-[0_12px_36px_rgba(15,23,42,0.06)] sm:px-6 sm:py-5">
+            <label className="flex items-center gap-4 text-slate-500 sm:gap-5">
+              <FontAwesomeIcon icon={faMagnifyingGlass} className="text-[1.5rem] text-teal-600 sm:text-[1.75rem]" />
+              <input
+                type="text"
+                value={jobSearchValue}
+                onChange={(event) => setJobSearchValue(event.target.value)}
+                placeholder="Search job roles..."
+                className="min-w-0 flex-1 bg-transparent text-[1.2rem] leading-tight text-slate-600 outline-none placeholder:text-slate-500 sm:text-[1.45rem] lg:text-[1.6rem]"
+              />
+            </label>
+          </div>
+
           {state.loading ? (
-            <div className="mt-8 rounded-[26px] border border-slate-200/80 bg-white px-6 py-10 text-center text-sm text-slate-500 shadow-[0_12px_36px_rgba(15,23,42,0.06)]">
-              Loading roles...
-            </div>
+            <JobGridSkeleton />
           ) : filteredJobs.length > 0 ? (
             <div className="mt-8 grid gap-5 lg:grid-cols-2 xl:grid-cols-3">
               {filteredJobs.map((job) => (
@@ -304,7 +375,7 @@ export default function LandingPage({ onRecruiterLogin }) {
             </div>
           ) : (
             <div className="mt-8 rounded-[26px] border border-slate-200/80 bg-white px-6 py-10 text-center text-sm text-slate-500 shadow-[0_12px_36px_rgba(15,23,42,0.06)]">
-              No jobs matched your search.
+              No job roles matched your search.
             </div>
           )}
         </section>

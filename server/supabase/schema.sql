@@ -4,6 +4,7 @@ create table if not exists public.companies (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   slug text not null unique,
+  password text,
   logo text,
   banner text,
   about text,
@@ -45,6 +46,11 @@ create table if not exists public.jobs (
   updated_at timestamptz not null default timezone('utc', now())
 );
 
+alter table public.companies add column if not exists password text;
+update public.companies
+set password = 'HirePoint123!'
+where password is null;
+
 alter table public.jobs add column if not exists work_policy text;
 alter table public.jobs add column if not exists department text;
 alter table public.jobs add column if not exists employment_type text;
@@ -64,6 +70,7 @@ alter table public.career_pages add column if not exists is_published boolean no
 alter table public.career_pages add column if not exists published_at timestamptz;
 
 create index if not exists career_pages_company_id_idx on public.career_pages(company_id);
+create unique index if not exists companies_name_lower_uidx on public.companies (lower(name));
 create index if not exists jobs_company_id_idx on public.jobs(company_id);
 create index if not exists jobs_location_idx on public.jobs(location);
 create index if not exists jobs_type_idx on public.jobs(type);

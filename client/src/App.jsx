@@ -1,186 +1,212 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import DashboardPage from "./pages/DashboardPage";
 import LandingPage from "./pages/LandingPage";
 import PublicCareerPage from "./pages/PublicCareerPage";
 import RecruiterAccessPage from "./pages/RecruiterAccessPage";
 import RecruiterCompanyViewPage from "./pages/RecruiterCompanyViewPage";
-import { createCompany, fetchCompanies, getErrorMessage } from "./services/api";
+import { createCompany, getErrorMessage, loginCompany } from "./services/api";
 
-function getPublicCareerSlugFromPath() {
-  if (typeof window === "undefined") {
-    return "";
-  }
+function editorPathFor(companySlug, section) {
+  const sectionPath = {
+    brand: "edit-brand",
+    sections: "edit-sections",
+    preview: "preview"
+  };
 
-  const match = window.location.pathname.match(/^\/careers\/([^/]+)\/?$/);
-  return match ? decodeURIComponent(match[1]) : "";
+  return `/${companySlug}/${sectionPath[section] || "edit-brand"}`;
+}
+
+function editorSectionFromPath(editorTab) {
+  const sectionMap = {
+    "edit-brand": "brand",
+    "edit-sections": "sections",
+    preview: "preview"
+  };
+
+  return sectionMap[editorTab] || "brand";
+}
+
+function RecruiterViewRoute() {
+  const navigate = useNavigate();
+  const { companySlug } = useParams();
+
+  return <RecruiterCompanyViewPage companySlug={companySlug} onEdit={(slug) => navigate(editorPathFor(slug, "brand"))} />;
+}
+
+function DashboardRoute() {
+  const navigate = useNavigate();
+  const { companySlug, editorTab } = useParams();
+  const initialSection = editorSectionFromPath(editorTab);
+
+  return (
+    <DashboardPage
+      initialCompanySlug={companySlug}
+      initialSection={initialSection}
+      onSectionChange={(section) => navigate(editorPathFor(companySlug, section), { replace: true })}
+      onExit={() => navigate(`/${companySlug}/recruiterview`)}
+    />
+  );
+}
+
+function PublicCareerRoute() {
+  const navigate = useNavigate();
+  const { companySlug } = useParams();
+
+  return (
+    <PublicCareerPage
+      companySlug={companySlug}
+      onBack={() => {
+        if (typeof window !== "undefined" && window.history.length > 1) {
+          navigate(-1);
+          return;
+        }
+
+        navigate("/");
+      }}
+    />
+  );
+}
+
+function AppRoutes({
+  accessMode,
+  existingCompanyName,
+  existingPassword,
+  newCompanyName,
+  newPassword,
+  confirmPassword,
+  accessState,
+  onRecruiterLogin,
+  onModeChange,
+  onExistingCompanyNameChange,
+  onExistingPasswordChange,
+  onNewCompanyChange,
+  onNewPasswordChange,
+  onConfirmPasswordChange,
+  onContinueToCompanyView
+}) {
+  return (
+    <Routes>
+      <Route path="/" element={<LandingPage onRecruiterLogin={onRecruiterLogin} />} />
+      <Route
+        path="/login"
+        element={
+          <RecruiterAccessPage
+            existingCompanyName={existingCompanyName}
+            existingPassword={existingPassword}
+            newCompanyName={newCompanyName}
+            newPassword={newPassword}
+            confirmPassword={confirmPassword}
+            mode={accessMode}
+            loading={accessState.loading}
+            error={accessState.error}
+            onModeChange={onModeChange}
+            onExistingCompanyNameChange={onExistingCompanyNameChange}
+            onExistingPasswordChange={onExistingPasswordChange}
+            onNewCompanyChange={onNewCompanyChange}
+            onNewPasswordChange={onNewPasswordChange}
+            onConfirmPasswordChange={onConfirmPasswordChange}
+            onContinue={onContinueToCompanyView}
+          />
+        }
+      />
+      <Route path="/:companySlug/recruiterview" element={<RecruiterViewRoute />} />
+      <Route path="/:companySlug/:editorTab" element={<DashboardRoute />} />
+      <Route path="/careers/:companySlug" element={<PublicCareerRoute />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
 }
 
 export default function App() {
-  const [view, setView] = useState(() => (getPublicCareerSlugFromPath() ? "publicCareer" : "landing"));
-  const [publicCompanySlug, setPublicCompanySlug] = useState(() => getPublicCareerSlugFromPath());
-  const [activeCompanySlug, setActiveCompanySlug] = useState("stripe");
+  const navigate = useNavigate();
+  const location = useLocation();
   const [accessMode, setAccessMode] = useState("existing");
-  const [accessCompanySlug, setAccessCompanySlug] = useState("");
+  const [existingCompanyName, setExistingCompanyName] = useState("");
+  const [existingPassword, setExistingPassword] = useState("");
   const [newCompanyName, setNewCompanyName] = useState("");
-  const [accessCompanies, setAccessCompanies] = useState([]);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [accessState, setAccessState] = useState({
     loading: false,
-    error: "",
-    initialized: false
+    error: ""
   });
 
   useEffect(() => {
     if (typeof window === "undefined") {
-      return undefined;
+      return;
     }
 
-    const syncViewFromLocation = () => {
-      const slug = getPublicCareerSlugFromPath();
-      if (slug) {
-        setPublicCompanySlug(slug);
-        setView("publicCareer");
-      } else {
-        setPublicCompanySlug("");
-        setView("landing");
-      }
-    };
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [location.pathname]);
 
-    window.addEventListener("popstate", syncViewFromLocation);
-    return () => window.removeEventListener("popstate", syncViewFromLocation);
-  }, []);
-
-  useEffect(() => {
-    let isCancelled = false;
-
-    async function loadAccessCompanies() {
-      if (view !== "access") {
-        return;
-      }
-
-      if (accessState.initialized && accessCompanies.length > 0) {
-        return;
-      }
-
-      setAccessState({ loading: true, error: "", initialized: accessState.initialized });
-
-      try {
-        const companies = await fetchCompanies();
-
-        if (isCancelled) {
-          return;
-        }
-
-        setAccessCompanies(companies);
-        setAccessCompanySlug((current) => current || companies[0]?.slug || "");
-        setAccessState({ loading: false, error: "", initialized: true });
-      } catch (error) {
-        if (isCancelled) {
-          return;
-        }
-
-        setAccessState({
-          loading: false,
-          error: getErrorMessage(error, "Failed to load companies."),
-          initialized: true
-        });
-      }
-    }
-
-    loadAccessCompanies();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [view, accessState.initialized, accessCompanies.length]);
-
-  const openRecruiterAccess = (companySlug = "") => {
-    setAccessMode(companySlug ? "existing" : accessCompanies.length > 0 ? "existing" : "new");
-    setAccessCompanySlug(companySlug || accessCompanySlug || accessCompanies[0]?.slug || "");
+  const openRecruiterAccess = () => {
+    setAccessMode("existing");
+    setExistingCompanyName("");
+    setExistingPassword("");
     setNewCompanyName("");
-    setView("access");
+    setNewPassword("");
+    setConfirmPassword("");
+    setAccessState({ loading: false, error: "" });
+    navigate("/login");
   };
 
   const continueToCompanyView = async () => {
-    setAccessState((current) => ({ ...current, loading: true, error: "" }));
+    setAccessState({ loading: true, error: "" });
 
     try {
-      if (accessMode === "new") {
-        const company = await createCompany({ name: newCompanyName.trim() });
-        setAccessCompanies((current) => [...current, company].sort((left, right) => left.name.localeCompare(right.name)));
-        setActiveCompanySlug(company.slug);
+      let company;
+
+      if (accessMode === "existing") {
+        company = await loginCompany({
+          name: existingCompanyName.trim(),
+          password: existingPassword
+        });
       } else {
-        setActiveCompanySlug(accessCompanySlug);
+        if (newPassword.length < 8) {
+          throw new Error("Password must be at least 8 characters.");
+        }
+
+        if (newPassword !== confirmPassword) {
+          throw new Error("Passwords do not match.");
+        }
+
+        company = await createCompany({
+          name: newCompanyName.trim(),
+          password: newPassword
+        });
       }
 
-      setAccessState((current) => ({ ...current, loading: false, error: "", initialized: true }));
-      setView("companyView");
+      setAccessState({ loading: false, error: "" });
+      navigate(`/${company.slug}/recruiterview`);
     } catch (error) {
-      setAccessState((current) => ({
-        ...current,
+      setAccessState({
         loading: false,
-        error: getErrorMessage(error, "Failed to open recruiter workspace."),
-        initialized: true
-      }));
+        error: getErrorMessage(error, error.message || "Failed to open recruiter workspace.")
+      });
     }
   };
 
-  if (view === "publicCareer") {
-    return (
-      <PublicCareerPage
-        companySlug={publicCompanySlug}
-        onBack={() => {
-          if (typeof window !== "undefined" && window.history.length > 1) {
-            window.history.back();
-            return;
-          }
+  const appRoutesProps = useMemo(
+    () => ({
+      accessMode,
+      existingCompanyName,
+      existingPassword,
+      newCompanyName,
+      newPassword,
+      confirmPassword,
+      accessState,
+      onRecruiterLogin: openRecruiterAccess,
+      onModeChange: setAccessMode,
+      onExistingCompanyNameChange: setExistingCompanyName,
+      onExistingPasswordChange: setExistingPassword,
+      onNewCompanyChange: setNewCompanyName,
+      onNewPasswordChange: setNewPassword,
+      onConfirmPasswordChange: setConfirmPassword,
+      onContinueToCompanyView: continueToCompanyView
+    }),
+    [accessMode, existingCompanyName, existingPassword, newCompanyName, newPassword, confirmPassword, accessState]
+  );
 
-          if (typeof window !== "undefined") {
-            window.location.assign("/");
-          }
-        }}
-      />
-    );
-  }
-
-  if (view === "dashboard") {
-    return (
-      <DashboardPage
-        initialCompanySlug={activeCompanySlug}
-        onExit={() => setView("companyView")}
-      />
-    );
-  }
-
-  if (view === "companyView") {
-    return (
-      <RecruiterCompanyViewPage
-        companySlug={activeCompanySlug}
-        onBack={() => setView("landing")}
-        onEdit={(companySlug) => {
-          setActiveCompanySlug(companySlug);
-          setView("dashboard");
-        }}
-      />
-    );
-  }
-
-  if (view === "access") {
-    return (
-      <RecruiterAccessPage
-        companies={accessCompanies}
-        selectedCompanySlug={accessCompanySlug}
-        newCompanyName={newCompanyName}
-        mode={accessMode}
-        loading={accessState.loading}
-        error={accessState.error}
-        onModeChange={setAccessMode}
-        onSelectCompany={setAccessCompanySlug}
-        onNewCompanyChange={setNewCompanyName}
-        onContinue={continueToCompanyView}
-        onBack={() => setView("landing")}
-      />
-    );
-  }
-
-  return <LandingPage onRecruiterLogin={openRecruiterAccess} />;
+  return <AppRoutes {...appRoutesProps} />;
 }
