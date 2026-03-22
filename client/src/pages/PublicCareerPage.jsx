@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import AppShell from "../components/dashboard/AppShell";
 import CareersPageView from "../components/careers/CareersPageView";
 import { CareersPageSkeleton } from "../components/Skeleton";
-import { fetchCareerPageEditor, fetchJobs, fetchPublicCareerPage, getErrorMessage } from "../services/api";
+import { fetchPublicCareerPage, getErrorMessage } from "../services/api";
 
 const lifeGallery = [
   "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1200&q=80",
@@ -12,7 +12,7 @@ const lifeGallery = [
   "https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=1200&q=80"
 ];
 
-export default function PublicCareerPage({ companySlug, onBack }) {
+export default function PublicCareerPage({ companySlug }) {
   const [state, setState] = useState({ loading: true, error: "" });
   const [page, setPage] = useState(null);
 
@@ -40,37 +40,11 @@ export default function PublicCareerPage({ companySlug, onBack }) {
           return;
         }
 
-        if (error.response?.status === 404) {
-          try {
-            const [editorPage, jobs] = await Promise.all([
-              fetchCareerPageEditor(companySlug),
-              fetchJobs({ companySlug })
-            ]);
+        const message = error.response?.status === 404
+          ? "This careers page has not been published yet."
+          : getErrorMessage(error, "Failed to load the public careers page.");
 
-            if (isCancelled) {
-              return;
-            }
-
-            setPage({
-              company: editorPage.company,
-              themeSettings: editorPage.careerPage.draft.themeSettings,
-              banner: editorPage.careerPage.draft.banner,
-              sections: editorPage.careerPage.draft.sections,
-              jobs
-            });
-            setState({ loading: false, error: "" });
-            return;
-          } catch (fallbackError) {
-            if (isCancelled) {
-              return;
-            }
-
-            setState({ loading: false, error: getErrorMessage(fallbackError, "Failed to load the careers page.") });
-            return;
-          }
-        }
-
-        setState({ loading: false, error: getErrorMessage(error, "Failed to load the public careers page.") });
+        setState({ loading: false, error: message });
       }
     }
 

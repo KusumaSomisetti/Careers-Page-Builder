@@ -70,6 +70,87 @@ function createEmptyStatus() {
   };
 }
 
+function isDraftJob(job) {
+  return typeof job?.id === "string" && job.id.startsWith("draft-");
+}
+
+function hasUnpublishedDraftChanges(editorPage) {
+  if (!editorPage?.careerPage?.published) {
+    return false;
+  }
+
+  return JSON.stringify({
+    themeSettings: editorPage.careerPage.draft.themeSettings,
+    banner: editorPage.careerPage.draft.banner,
+    sections: editorPage.careerPage.draft.sections
+  }) !== JSON.stringify({
+    themeSettings: editorPage.careerPage.published.themeSettings,
+    banner: editorPage.careerPage.published.banner,
+    sections: editorPage.careerPage.published.sections
+  });
+}
+
+function createPublishedState(editorPage, jobs) {
+  const published = editorPage?.careerPage?.published;
+
+  if (!published) {
+    return toBuilderState(editorPage, jobs);
+  }
+
+  return {
+    company: {
+      name: editorPage.company.name || "",
+      logo: editorPage.company.logo || ""
+    },
+    themeSettings: published.themeSettings || {},
+    banner: published.banner || {},
+    sections: published.sections || [],
+    jobs
+  };
+}
+
+function buildPublicCareerUrl(slug) {
+  if (!slug || typeof window === "undefined") {
+    return "";
+  }
+
+  return `${window.location.origin}/careers/${slug}`;
+}
+
+function DraftPrompt({ open, onContinue, onClear, loading }) {
+  if (!open) {
+    return null;
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+      <button type="button" className="absolute inset-0 bg-slate-950/30" onClick={onContinue} aria-label="Continue with draft" />
+      <div className="relative w-full max-w-md rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_24px_60px_rgba(15,23,42,0.22)]">
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-teal-700">Draft found</p>
+        <h3 className="mt-3 text-2xl font-semibold tracking-tight text-slate-950">Continue editing your draft?</h3>
+        <p className="mt-3 text-sm leading-6 text-slate-600">You have unpublished changes in the editor. Continue with that draft or clear it and start from the currently published version.</p>
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+          <button
+            type="button"
+            onClick={onContinue}
+            className="inline-flex flex-1 items-center justify-center rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+          >
+            Continue with draft
+          </button>
+          <button
+            type="button"
+            onClick={onClear}
+            disabled={loading}
+            className="inline-flex flex-1 items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 disabled:opacity-60"
+          >
+            {loading ? "Clearing..." : "Clear draft"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function BuilderTabs({ sections, activeSection, onSelect, className = "", compact = false }) {
   const containerClasses = compact
     ? "flex min-h-12 items-center gap-6 border-b border-slate-200/80 bg-white px-4 py-2"
@@ -234,6 +315,7 @@ export default function DashboardPage({ initialCompanySlug = "stripe", initialSe
   const [shareState, setShareState] = useState({ loading: false, link: "", message: "" });
   const [isSaveMenuOpen, setIsSaveMenuOpen] = useState(false);
   const [isShareSheetOpen, setIsShareSheetOpen] = useState(false);
+  const [draftPromptState, setDraftPromptState] = useState({ open: false, clearing: false, publishedState: null });
 
   useEffect(() => {
     setSelectedCompanySlug(initialCompanySlug || "");
@@ -273,6 +355,11 @@ export default function DashboardPage({ initialCompanySlug = "stripe", initialSe
 
         setCompanyExists(true);
         setCareerPage(toBuilderState(editorPage, jobs));
+        setDraftPromptState({
+          open: hasUnpublishedDraftChanges(editorPage),
+          clearing: false,
+          publishedState: createPublishedState(editorPage, jobs)
+        });
         setDashboardState({ loading: false, error: "" });
       } catch (error) {
         if (isCancelled) {
@@ -374,53 +461,83 @@ export default function DashboardPage({ initialCompanySlug = "stripe", initialSe
     return draft;
   };
 
-  const saveBrand = async () => {
-    setBrandStatus({ saving: true, error: "", success: "" });
+  const setEditorStatuses = (status) => {
+    setBrandStatus(status);
+    setSectionsStatus(status);
+  };
+
+  const persistPublishedJobs = async (slug) => {
+    await Promise.all(
+      careerPage.jobs.map((job) => {
+        const payload = { title: job.title, location: job.location, type: job.type, summary: job.summary };
+        return isDraftJob(job) ? createJob(slug, payload) : updateJob(job.id, payload);
+      })
+    );
+
+    const refreshedJobs = await fetchJobs({ companySlug: slug });
+    setCareerPage((current) => ({ ...current, jobs: refreshedJobs }));
+    return refreshedJobs;
+  };
+
+  const saveDraftOnly = async () => {
+    setEditorStatuses({ saving: true, error: "", success: "" });
+
     try {
       const savedCompany = await persistCompany();
       await persistDraft(savedCompany.slug);
-      setBrandStatus({ saving: false, error: "", success: "Brand theme saved." });
+      setEditorStatuses({ saving: false, error: "", success: "Draft saved." });
     } catch (error) {
-      setBrandStatus({ saving: false, error: getErrorMessage(error, "Failed to save brand theme."), success: "" });
+      setEditorStatuses({ saving: false, error: getErrorMessage(error, "Failed to save draft."), success: "" });
+      throw error;
     }
   };
 
-  const saveSections = async () => {
-    setSectionsStatus({ saving: true, error: "", success: "" });
+  const saveAndPublish = async () => {
+    setEditorStatuses({ saving: true, error: "", success: "" });
+
     try {
       const savedCompany = await persistCompany();
       await persistDraft(savedCompany.slug);
-      const savedJobs = await Promise.all(
-        careerPage.jobs.map((job) => {
-          const payload = { title: job.title, location: job.location, type: job.type, summary: job.summary };
-          return job.id.startsWith("draft-") ? createJob(savedCompany.slug, payload) : updateJob(job.id, payload);
-        })
-      );
-      setCareerPage((current) => ({ ...current, jobs: savedJobs }));
-      setSectionsStatus({ saving: false, error: "", success: "Sections and roles saved." });
+      await persistPublishedJobs(savedCompany.slug);
+      await publishCareerPage(savedCompany.slug);
+      setDraftPromptState({ open: false, clearing: false, publishedState: null });
+      setEditorStatuses({ saving: false, error: "", success: "Changes published." });
     } catch (error) {
-      setSectionsStatus({ saving: false, error: getErrorMessage(error, "Failed to save sections and roles."), success: "" });
+      setEditorStatuses({ saving: false, error: getErrorMessage(error, "Failed to publish changes."), success: "" });
+      throw error;
     }
   };
 
-  const saveCurrentDraft = async () => {
-    if (activeSection === "brand") {
-      await saveBrand();
+  const clearDraft = async () => {
+    if (!selectedCompanySlug || !draftPromptState.publishedState) {
+      setDraftPromptState({ open: false, clearing: false, publishedState: null });
       return;
     }
-    if (activeSection === "sections") {
-      await saveSections();
-      return;
+
+    setDraftPromptState((current) => ({ ...current, clearing: true }));
+
+    try {
+      const restored = draftPromptState.publishedState;
+      await updateCareerPageDraft(selectedCompanySlug, {
+        themeSettings: restored.themeSettings,
+        banner: restored.banner,
+        sections: restored.sections
+      });
+      setCareerPage(restored);
+      setEditorStatuses({ saving: false, error: "", success: "Draft cleared." });
+      setDraftPromptState({ open: false, clearing: false, publishedState: null });
+    } catch (error) {
+      setEditorStatuses({ saving: false, error: getErrorMessage(error, "Failed to clear draft."), success: "" });
+      setDraftPromptState((current) => ({ ...current, clearing: false }));
     }
-    const savedCompany = await persistCompany();
-    await persistDraft(savedCompany.slug);
   };
 
   const copyShareLink = async () => {
     if (!selectedCompanySlug) return;
-    setShareState((current) => ({ ...current, loading: true, message: "" }));
+    const readyLink = shareState.link || buildPublicCareerUrl(selectedCompanySlug);
+    setShareState((current) => ({ ...current, loading: true, message: "", link: readyLink || current.link }));
     try {
-      const link = await ensurePublishedShareLink();
+      const link = readyLink || await ensurePublishedShareLink();
       if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(link);
       }
@@ -432,9 +549,10 @@ export default function DashboardPage({ initialCompanySlug = "stripe", initialSe
 
   const nativeShareLink = async () => {
     if (!selectedCompanySlug) return;
-    setShareState((current) => ({ ...current, loading: true, message: "" }));
+    const readyLink = shareState.link || buildPublicCareerUrl(selectedCompanySlug);
+    setShareState((current) => ({ ...current, loading: true, message: "", link: readyLink || current.link }));
     try {
-      const link = await ensurePublishedShareLink();
+      const link = readyLink || await ensurePublishedShareLink();
       if (navigator.share) {
         await navigator.share({ title: `${careerPage.company.name} Careers`, url: link });
         setShareState((current) => ({ ...current, loading: false, link, message: "Shared successfully." }));
@@ -449,14 +567,27 @@ export default function DashboardPage({ initialCompanySlug = "stripe", initialSe
   const ensurePublishedShareLink = async () => {
     const savedCompany = await persistCompany();
     await persistDraft(savedCompany.slug);
+    await persistPublishedJobs(savedCompany.slug);
     const published = await publishCareerPage(savedCompany.slug);
     const link = published.careerPage.shareUrl;
+    setDraftPromptState({ open: false, clearing: false, publishedState: null });
     setShareState((current) => ({ ...current, link }));
     return link;
   };
 
+  const openShareSheet = async () => {
+    setIsShareSheetOpen(true);
+
+    if (!selectedCompanySlug) {
+      return;
+    }
+
+    const readyLink = buildPublicCareerUrl(selectedCompanySlug);
+    setShareState((current) => ({ ...current, link: current.link || readyLink, message: "" }));
+  };
+
   const saveOnly = async () => {
-    await saveCurrentDraft();
+    await saveAndPublish();
     setIsSaveMenuOpen(false);
   };
 
@@ -465,18 +596,18 @@ export default function DashboardPage({ initialCompanySlug = "stripe", initialSe
       eyebrow: "Brand Theme",
       title: "Set the company look and feel",
       description: "Control colors, banner presentation, logo appearance, and culture-video metadata from one panel.",
-      saveLabel: "Save Brand",
+      saveLabel: "Save Draft",
       state: brandStatus,
-      onSave: saveBrand,
+      onSave: saveDraftOnly,
       content: <CompanyEditor company={careerPage.company} themeSettings={careerPage.themeSettings} banner={careerPage.banner} selectedSlug={selectedCompanySlug} onCompanyChange={updateCompanyField} onThemeChange={updateThemeField} onBannerChange={updateBannerField} />
     },
     sections: {
       eyebrow: "Content Sections",
       title: "Build the page structure",
       description: "Manage visible sections first, then configure the job roles that power the Open Roles experience.",
-      saveLabel: "Save Sections",
+      saveLabel: "Save Draft",
       state: sectionsStatus,
-      onSave: saveSections,
+      onSave: saveDraftOnly,
       content: (
         <div className="space-y-6">
           <SectionsEditor sections={careerPage.sections} selectedSlug={selectedCompanySlug} onChange={updateSections} />
@@ -496,7 +627,7 @@ export default function DashboardPage({ initialCompanySlug = "stripe", initialSe
       description: "Use the live preview to validate the careers experience before you publish or share it.",
       saveLabel: "Save Draft",
       state: sectionsStatus,
-      onSave: saveCurrentDraft,
+      onSave: saveDraftOnly,
       content: null
     }
   }), [brandStatus, sectionsStatus, careerPage, selectedCompanySlug]);
@@ -507,7 +638,7 @@ export default function DashboardPage({ initialCompanySlug = "stripe", initialSe
   return (
     <AppShell>
       <div className="xl:flex xl:h-screen xl:flex-col xl:overflow-hidden">
-        <BuilderHeader companyName={careerPage.company.name} companySlug={selectedCompanySlug || initialCompanySlug} onOpenSaveMenu={() => setIsSaveMenuOpen(true)} onOpenShareSheet={() => setIsShareSheetOpen(true)} />
+        <BuilderHeader companyName={careerPage.company.name} companySlug={selectedCompanySlug || initialCompanySlug} onOpenSaveMenu={() => setIsSaveMenuOpen(true)} onOpenShareSheet={openShareSheet} />
         <BuilderTabs sections={dashboardSections} activeSection={activeSection} onSelect={selectSection} className="xl:hidden" />
 
         <main className="mx-auto max-w-[110rem] overflow-x-clip px-4 pb-10 pt-5 sm:px-6 lg:px-8 xl:h-[calc(100vh-4.5rem)] xl:min-h-0 xl:flex-1 xl:overflow-hidden xl:pb-6 xl:pt-6">
@@ -533,6 +664,12 @@ export default function DashboardPage({ initialCompanySlug = "stripe", initialSe
                     <h2 className="text-2xl font-semibold tracking-tight text-slate-950">{activeSectionMeta.title}</h2>
                     <p className="text-sm leading-6 text-slate-500">{activeSectionMeta.description}</p>
                   </div>
+                  {activeSectionMeta.state.error ? (
+                    <div className="rounded-[20px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{activeSectionMeta.state.error}</div>
+                  ) : null}
+                  {activeSectionMeta.state.success ? (
+                    <div className="rounded-[20px] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{activeSectionMeta.state.success}</div>
+                  ) : null}
                   {dashboardState.loading ? <DashboardPanelSkeleton section={activeSection} /> : activeSectionMeta.content}
                 </div>
               </div>
@@ -540,8 +677,9 @@ export default function DashboardPage({ initialCompanySlug = "stripe", initialSe
           </div>
         </main>
 
-        <SaveMenu open={isSaveMenuOpen} onClose={() => setIsSaveMenuOpen(false)} onSaveDraft={async () => { await saveCurrentDraft(); setIsSaveMenuOpen(false); }} onSave={saveOnly} loading={brandStatus.saving || sectionsStatus.saving || shareState.loading} />
+        <SaveMenu open={isSaveMenuOpen} onClose={() => setIsSaveMenuOpen(false)} onSaveDraft={async () => { await saveDraftOnly(); setIsSaveMenuOpen(false); }} onSave={saveOnly} loading={brandStatus.saving || sectionsStatus.saving || shareState.loading} />
         <ShareSheet open={isShareSheetOpen} link={shareState.link} message={shareState.message} loading={shareState.loading} onClose={() => setIsShareSheetOpen(false)} onCopy={copyShareLink} onNativeShare={nativeShareLink} />
+        <DraftPrompt open={draftPromptState.open} loading={draftPromptState.clearing} onContinue={() => setDraftPromptState((current) => ({ ...current, open: false }))} onClear={clearDraft} />
       </div>
     </AppShell>
   );

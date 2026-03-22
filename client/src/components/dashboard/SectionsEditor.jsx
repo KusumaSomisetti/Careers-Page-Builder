@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faChevronDown, faChevronUp, faPlus, faTrashCan } from "@fortawesome/free-solid-svg-icons";
+import { faChevronDown, faChevronUp, faGripVertical, faPlus, faTrashCan } from "@fortawesome/free-solid-svg-icons";
+import { uploadCompanyAsset } from "../../services/api";
 
 function createCustomSection() {
   return {
@@ -14,16 +15,83 @@ function createCustomSection() {
   };
 }
 
-function SectionRow({ section, isActive, onClick, onMove, onRemove }) {
+function GalleryUploadField({ selectedSlug, onUpload }) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState("");
+  const disabled = !selectedSlug;
+
+  return (
+    <label className="block space-y-2">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-sm font-medium text-slate-700">Upload gallery images</span>
+        <span className={`text-xs ${error ? "text-rose-500" : "text-slate-400"}`}>
+          {error || (uploading ? "Uploading..." : disabled ? "Save once to enable uploads" : "Adds to current gallery")}
+        </span>
+      </div>
+      <span className={`relative inline-flex items-center justify-center rounded-[18px] border px-4 py-3 text-sm font-medium transition ${disabled || uploading ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-300" : "cursor-pointer border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"}`}>
+        Upload images
+        <input
+          type="file"
+          accept="image/*"
+          multiple
+          disabled={disabled || uploading}
+          className="absolute inset-0 cursor-pointer opacity-0 disabled:cursor-not-allowed"
+          onChange={async (event) => {
+            const files = Array.from(event.target.files || []);
+            if (!files.length) {
+              return;
+            }
+
+            setUploading(true);
+            setError("");
+
+            try {
+              const uploadedItems = await Promise.all(
+                files.map(async (file) => {
+                  const asset = await uploadCompanyAsset(selectedSlug, file, "gallery");
+                  return asset.publicUrl;
+                })
+              );
+              onUpload(uploadedItems.filter(Boolean));
+            } catch (uploadError) {
+              setError(uploadError.message || "Upload failed.");
+            } finally {
+              setUploading(false);
+              event.target.value = "";
+            }
+          }}
+        />
+      </span>
+    </label>
+  );
+}
+
+function SectionRow({ section, isActive, isDragging, onClick, onMove, onRemove, onDragStart, onDragOver, onDrop, onDragEnd }) {
   const sectionLabel = section.type === "custom" ? "custom section" : section.type.replace(/_/g, " ");
 
   return (
-    <div className={`rounded-[20px] border p-4 transition ${isActive ? "border-slate-950 bg-slate-950 text-white" : "border-slate-200 bg-white"}`}>
+    <div
+      draggable
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
+      className={`rounded-[20px] border p-4 transition ${isActive ? "border-slate-950 bg-slate-950 text-white" : "border-slate-200 bg-white"} ${isDragging ? "opacity-55" : "opacity-100"}`}
+    >
       <div className="flex items-start justify-between gap-3">
-        <button type="button" onClick={onClick} className="min-w-0 flex-1 text-left">
-          <p className={`text-xs font-semibold uppercase tracking-[0.16em] ${isActive ? "text-slate-300" : "text-slate-400"}`}>{sectionLabel}</p>
-          <p className="mt-2 truncate text-base font-semibold tracking-tight">{section.title}</p>
-        </button>
+        <div className="flex min-w-0 flex-1 items-start gap-3">
+          <button
+            type="button"
+            aria-label="Drag to reorder section"
+            className={`mt-0.5 inline-flex h-9 w-9 shrink-0 cursor-grab items-center justify-center rounded-full ${isActive ? "bg-white/12 text-white" : "bg-slate-100 text-slate-500"}`}
+          >
+            <FontAwesomeIcon icon={faGripVertical} />
+          </button>
+          <button type="button" onClick={onClick} className="min-w-0 flex-1 text-left">
+            <p className={`text-xs font-semibold uppercase tracking-[0.16em] ${isActive ? "text-slate-300" : "text-slate-400"}`}>{sectionLabel}</p>
+            <p className="mt-2 truncate text-base font-semibold tracking-tight">{section.title}</p>
+          </button>
+        </div>
         <div className="flex shrink-0 items-center gap-2">
           <button
             type="button"
@@ -55,8 +123,9 @@ function SectionRow({ section, isActive, onClick, onMove, onRemove }) {
   );
 }
 
-export default function SectionsEditor({ sections, onChange }) {
+export default function SectionsEditor({ sections, selectedSlug, onChange }) {
   const [selectedSectionId, setSelectedSectionId] = useState(sections[0]?.id || "");
+  const [draggedSectionId, setDraggedSectionId] = useState("");
 
   useEffect(() => {
     if (!sections.length) {
@@ -97,6 +166,23 @@ export default function SectionsEditor({ sections, onChange }) {
     onChange(next);
   };
 
+  const reorderSections = (sourceId, targetId) => {
+    if (!sourceId || !targetId || sourceId === targetId) {
+      return;
+    }
+
+    const sourceIndex = sections.findIndex((section) => section.id === sourceId);
+    const targetIndex = sections.findIndex((section) => section.id === targetId);
+    if (sourceIndex < 0 || targetIndex < 0) {
+      return;
+    }
+
+    const next = [...sections];
+    const [movedSection] = next.splice(sourceIndex, 1);
+    next.splice(targetIndex, 0, movedSection);
+    onChange(next);
+  };
+
   const removeSection = (sectionId) => {
     onChange(sections.filter((section) => section.id !== sectionId));
   };
@@ -107,7 +193,8 @@ export default function SectionsEditor({ sections, onChange }) {
     setSelectedSectionId(next[next.length - 1].id);
   };
 
-  const lifeItemsText = Array.isArray(selectedSection?.content?.items) ? selectedSection.content.items.join("\n") : "";
+  const lifeItems = Array.isArray(selectedSection?.content?.items) ? selectedSection.content.items : [];
+  const lifeItemsText = lifeItems.join(String.fromCharCode(10));
 
   return (
     <div className="space-y-5">
@@ -132,9 +219,17 @@ export default function SectionsEditor({ sections, onChange }) {
             key={section.id}
             section={section}
             isActive={section.id === selectedSectionId}
+            isDragging={section.id === draggedSectionId}
             onClick={() => setSelectedSectionId(section.id)}
             onMove={(direction) => moveSection(section.id, direction)}
             onRemove={() => removeSection(section.id)}
+            onDragStart={() => setDraggedSectionId(section.id)}
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={() => {
+              reorderSections(draggedSectionId, section.id);
+              setDraggedSectionId("");
+            }}
+            onDragEnd={() => setDraggedSectionId("")}
           />
         ))}
       </div>
@@ -194,12 +289,16 @@ export default function SectionsEditor({ sections, onChange }) {
                   rows={6}
                   value={lifeItemsText}
                   onChange={(event) => updateContent(selectedSection.id, {
-                    items: event.target.value.split(/\r?\n/).map((item) => item.trim()).filter(Boolean)
+                    items: event.target.value.split(String.fromCharCode(10)).map((item) => item.trim()).filter(Boolean)
                   })}
                   placeholder="One image URL per line"
                   className="w-full rounded-[18px] border border-slate-200 bg-white px-4 py-3 text-sm leading-7 text-slate-900 outline-none"
                 />
               </label>
+              <GalleryUploadField
+                selectedSlug={selectedSlug}
+                onUpload={(uploadedItems) => updateContent(selectedSection.id, { items: [...lifeItems, ...uploadedItems] })}
+              />
             </div>
           ) : null}
 
@@ -235,3 +334,4 @@ export default function SectionsEditor({ sections, onChange }) {
     </div>
   );
 }
+

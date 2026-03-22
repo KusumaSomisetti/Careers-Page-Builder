@@ -1,10 +1,56 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronDown, faChevronUp, faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
 import AppShell from "../components/dashboard/AppShell";
 import BrandMark from "../components/BrandMark";
 import { fetchCompanies, fetchJobs, getErrorMessage } from "../services/api";
 import { CardRowSkeleton, JobGridSkeleton, Skeleton } from "../components/Skeleton";
+
+const LANDING_CACHE_KEY = "hirepoint:landing-cache";
+
+function readLandingCache() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const rawValue = window.localStorage.getItem(LANDING_CACHE_KEY);
+    if (!rawValue) {
+      return null;
+    }
+
+    const parsedValue = JSON.parse(rawValue);
+    const companies = Array.isArray(parsedValue?.companies) ? parsedValue.companies : [];
+    const jobs = Array.isArray(parsedValue?.jobs) ? parsedValue.jobs : [];
+
+    if (!companies.length && !jobs.length) {
+      return null;
+    }
+
+    return { companies, jobs };
+  } catch {
+    return null;
+  }
+}
+
+function writeLandingCache(companies, jobs) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(
+      LANDING_CACHE_KEY,
+      JSON.stringify({
+        companies,
+        jobs,
+        cachedAt: Date.now()
+      })
+    );
+  } catch {
+    // Ignore cache write failures.
+  }
+}
 
 function LockIcon() {
   return (
@@ -15,28 +61,30 @@ function LockIcon() {
   );
 }
 
-function useAnimatedCount(target, enabled) {
-  const [count, setCount] = useState(0);
+function useAnimatedCount(target, loading) {
+  const [count, setCount] = useState(target);
 
   useEffect(() => {
-    if (!enabled) {
-      setCount(0);
+    if (loading) {
       return;
     }
 
-    if (target <= 0) {
-      setCount(0);
-      return;
-    }
+    setCount((currentCount) => {
+      if (currentCount === target) {
+        return currentCount;
+      }
+
+      return currentCount;
+    });
 
     let frameId;
-    const duration = 900;
-    const startValue = target > 0 ? 1 : 0;
+    const duration = 700;
+    const startValue = count;
     const startTime = performance.now();
 
     const tick = (currentTime) => {
       const progress = Math.min((currentTime - startTime) / duration, 1);
-      const easedProgress = 1 - (1 - progress) * (1 - progress);
+      const easedProgress = 1 - Math.pow(1 - progress, 3);
       const nextValue = Math.round(startValue + (target - startValue) * easedProgress);
       setCount(progress >= 1 ? target : nextValue);
 
@@ -48,7 +96,13 @@ function useAnimatedCount(target, enabled) {
     frameId = window.requestAnimationFrame(tick);
 
     return () => window.cancelAnimationFrame(frameId);
-  }, [enabled, target]);
+  }, [count, loading, target]);
+
+  useEffect(() => {
+    if (!loading && count === 0 && target === 0) {
+      setCount(0);
+    }
+  }, [count, loading, target]);
 
   return count;
 }
@@ -70,7 +124,7 @@ function CompanyLogo({ company }) {
 }
 
 function SnapshotValue({ label, value, loading }) {
-  const animatedValue = useAnimatedCount(value, !loading);
+  const animatedValue = useAnimatedCount(value, loading);
 
   return (
     <div className="rounded-[24px] bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.05)]">
@@ -120,25 +174,35 @@ function JobResultCard({ job }) {
     <article className="rounded-[26px] border border-slate-200/80 bg-white p-5 shadow-[0_12px_36px_rgba(15,23,42,0.06)]">
       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">{job.company?.name || "Company"}</p>
       <h3 className="mt-3 text-xl font-semibold tracking-tight text-slate-950">{job.title}</h3>
-      <p className="mt-2 text-sm text-slate-500">{job.location} ? {job.type}</p>
+      <p className="mt-2 text-sm text-slate-500">{job.location} � {job.type}</p>
       <p className="mt-3 text-sm leading-7 text-slate-600">{job.summary}</p>
     </article>
   );
 }
 
 export default function LandingPage({ onRecruiterLogin }) {
+  const cachedLanding = useMemo(() => readLandingCache(), []);
   const [jobSearchValue, setJobSearchValue] = useState("");
   const [companySearchValue, setCompanySearchValue] = useState("");
   const [companiesExpanded, setCompaniesExpanded] = useState(false);
-  const [companies, setCompanies] = useState([]);
-  const [jobs, setJobs] = useState([]);
-  const [state, setState] = useState({ loading: true, error: "" });
+  const [companies, setCompanies] = useState(cachedLanding?.companies || []);
+  const [jobs, setJobs] = useState(cachedLanding?.jobs || []);
+  const [state, setState] = useState({
+    loading: !cachedLanding,
+    refreshing: Boolean(cachedLanding),
+    error: ""
+  });
 
   useEffect(() => {
     let isCancelled = false;
 
     async function loadLandingData() {
-      setState({ loading: true, error: "" });
+      setState((currentState) => ({
+        ...currentState,
+        loading: currentState.loading && !cachedLanding,
+        refreshing: Boolean(cachedLanding),
+        error: ""
+      }));
 
       try {
         const [companyList, jobList] = await Promise.all([fetchCompanies(), fetchJobs()]);
@@ -149,7 +213,8 @@ export default function LandingPage({ onRecruiterLogin }) {
 
         setCompanies(companyList);
         setJobs(jobList);
-        setState({ loading: false, error: "" });
+        writeLandingCache(companyList, jobList);
+        setState({ loading: false, refreshing: false, error: "" });
       } catch (error) {
         if (isCancelled) {
           return;
@@ -157,6 +222,7 @@ export default function LandingPage({ onRecruiterLogin }) {
 
         setState({
           loading: false,
+          refreshing: false,
           error: getErrorMessage(error, "Failed to load careers data.")
         });
       }
@@ -167,7 +233,7 @@ export default function LandingPage({ onRecruiterLogin }) {
     return () => {
       isCancelled = true;
     };
-  }, []);
+  }, [cachedLanding]);
 
   const normalizedJobQuery = jobSearchValue.trim().toLowerCase();
   const normalizedCompanyQuery = companySearchValue.trim().toLowerCase();
@@ -251,14 +317,15 @@ export default function LandingPage({ onRecruiterLogin }) {
           </div>
 
           <div className="mt-8 rounded-[32px] border border-white/80 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.96),_rgba(226,232,240,0.68))] p-5 shadow-[0_20px_60px_rgba(15,23,42,0.08)] sm:p-6 lg:mt-1">
-            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-400">HirePoint Snapshot</p>
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-400">HirePoint Snapshot</p>
+              {state.refreshing ? <span className="text-xs font-medium text-slate-400">Refreshing�</span> : null}
+            </div>
             <div className="mt-4 grid grid-cols-2 gap-4">
-              <SnapshotValue label="Featured companies" value={companies.length} loading={state.loading} />
+              <SnapshotValue label="Companies" value={companies.length} loading={state.loading} />
               <SnapshotValue label="Live roles" value={jobs.length} loading={state.loading} />
             </div>
-            <p className="mt-4 text-sm leading-7 text-slate-600">
-              Explore curated career experiences, discover standout software teams, and jump into the recruiter workspace when you need to edit content.
-            </p>
+            
           </div>
         </section>
 
@@ -274,9 +341,7 @@ export default function LandingPage({ onRecruiterLogin }) {
               <h2 className="text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl lg:text-[3.2rem]">
                 Featured Companies
               </h2>
-              <p className="mt-3 text-base text-slate-500 sm:text-lg">
-                Hand-picked software teams hiring right now.
-              </p>
+             
             </div>
 
             {companies.length > 8 ? (
@@ -285,7 +350,7 @@ export default function LandingPage({ onRecruiterLogin }) {
                 onClick={() => setCompaniesExpanded((current) => !current)}
                 className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-[0_10px_24px_rgba(15,23,42,0.06)] transition hover:border-slate-300 hover:text-slate-950"
               >
-                <span>{companiesExpanded ? "Collapse list" : "View all companies"}</span>
+                <span>{companiesExpanded ? "Hide all" : "View all"}</span>
                 <FontAwesomeIcon icon={companiesExpanded ? faChevronUp : faChevronDown} />
               </button>
             ) : null}
@@ -383,3 +448,4 @@ export default function LandingPage({ onRecruiterLogin }) {
     </AppShell>
   );
 }
+

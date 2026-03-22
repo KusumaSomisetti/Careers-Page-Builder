@@ -56,7 +56,7 @@ export default function RecruiterCompanyViewPage({ companySlug, onEdit }) {
     };
   }, [companySlug]);
 
-  const draft = useMemo(() => page?.careerPage?.draft || { themeSettings: {}, banner: {}, sections: [] }, [page]);
+  const published = useMemo(() => page?.careerPage?.published || null, [page]);
 
   return (
     <AppShell>
@@ -66,16 +66,22 @@ export default function RecruiterCompanyViewPage({ companySlug, onEdit }) {
         {state.loading ? (
           <CareersPageSkeleton showEdit />
         ) : page ? (
-          <CareersPageView
-            companyName={page.company.name}
-            themeSettings={draft.themeSettings}
-            banner={draft.banner}
-            sections={draft.sections}
-            jobs={jobs}
-            fallbackLifeImages={lifeGallery}
-            showEdit
-            onEdit={() => onEdit(companySlug)}
-          />
+          published ? (
+            <CareersPageView
+              companyName={page.company.name}
+              themeSettings={published.themeSettings}
+              banner={published.banner}
+              sections={published.sections}
+              jobs={jobs}
+              fallbackLifeImages={lifeGallery}
+              showEdit
+              onEdit={() => onEdit(companySlug)}
+            />
+          ) : (
+            <div className="mx-3 mt-3 rounded-[24px] border border-slate-200 bg-white px-5 py-6 text-sm text-slate-600 shadow-[0_12px_30px_rgba(15,23,42,0.05)] sm:mx-5 lg:mx-6 xl:mx-8">
+              The published careers page is not available yet. Open the editor to continue building and use <span className="font-semibold text-slate-950">Save</span> when you are ready to publish.
+            </div>
+          )
         ) : null}
       </main>
     </AppShell>

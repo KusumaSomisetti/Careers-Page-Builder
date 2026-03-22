@@ -36,7 +36,7 @@ export function sanitizeSections(sections = []) {
 
 export function sanitizeCompanyPayload(payload = {}) {
   return {
-    ...(payload.name !== undefined ? { name: payload.name } : {}),
+    ...(payload.name !== undefined ? { name: String(payload.name).trim() } : {}),
     ...(payload.slug !== undefined ? { slug: createSlug(payload.slug) } : {}),
     ...(payload.logo !== undefined ? { logo: payload.logo } : {}),
     ...(payload.banner !== undefined ? { banner: payload.banner } : {}),

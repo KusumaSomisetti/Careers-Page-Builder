@@ -1,4 +1,4 @@
-﻿import axios from "axios";
+import axios from "axios";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL ?? "/api",
@@ -21,6 +21,11 @@ export async function fetchCompanyBySlug(slug) {
   return response.data;
 }
 
+export async function loginCompany(payload) {
+  const response = await api.post("/companies/login", payload);
+  return response.data;
+}
+
 export async function createCompany(payload) {
   const response = await api.post("/companies", payload);
   return response.data;
@@ -38,6 +43,20 @@ export async function fetchCareerPageEditor(slug) {
 
 export async function updateCareerPageDraft(slug, payload) {
   const response = await api.patch(`/companies/${slug}/career-page`, payload);
+  return response.data;
+}
+
+export async function uploadCompanyAsset(slug, file, kind) {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("kind", kind);
+
+  const response = await api.post(`/companies/${slug}/career-page/assets`, formData, {
+    headers: {
+      "Content-Type": "multipart/form-data"
+    }
+  });
+
   return response.data;
 }
 

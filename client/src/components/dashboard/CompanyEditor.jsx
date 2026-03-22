@@ -1,4 +1,9 @@
-﻿function InputField({ label, value, onChange, placeholder, helper, type = "text" }) {
+import { useState } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faArrowUpFromBracket } from "@fortawesome/free-solid-svg-icons";
+import { uploadCompanyAsset } from "../../services/api";
+
+function InputField({ label, value, onChange, placeholder, helper, type = "text" }) {
   return (
     <label className="block space-y-2">
       <div className="flex items-center justify-between gap-3">
@@ -38,21 +43,69 @@ function ColorField({ label, value, onChange }) {
   );
 }
 
+function MediaUrlField({ label, value, onChange, placeholder, helper, uploadLabel, disabled = false, onUpload }) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState("");
+
+  return (
+    <label className="block space-y-2">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-sm font-medium text-slate-700">{label}</span>
+        <span className={`text-xs ${error ? "text-rose-500" : "text-slate-400"}`}>
+          {error || (uploading ? "Uploading..." : helper)}
+        </span>
+      </div>
+      <div className="relative">
+        <input
+          type="text"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder={placeholder}
+          className="w-full rounded-[20px] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] px-4 py-3.5 pr-14 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white"
+        />
+        <span className="absolute right-2 top-1/2 -translate-y-1/2">
+          <span className={`relative inline-flex h-10 w-10 items-center justify-center rounded-full transition ${disabled || uploading ? "cursor-not-allowed bg-slate-100 text-slate-300" : "cursor-pointer bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
+            <FontAwesomeIcon icon={faArrowUpFromBracket} />
+            <input
+              type="file"
+              accept="image/*"
+              aria-label={uploadLabel}
+              disabled={disabled || uploading}
+              className="absolute inset-0 cursor-pointer opacity-0 disabled:cursor-not-allowed"
+              onChange={async (event) => {
+                const file = event.target.files?.[0];
+                if (!file) {
+                  return;
+                }
+
+                setUploading(true);
+                setError("");
+
+                try {
+                  const uploadedUrl = await onUpload(file);
+                  onChange(uploadedUrl);
+                } catch (uploadError) {
+                  setError(uploadError.message || "Upload failed.");
+                } finally {
+                  setUploading(false);
+                  event.target.value = "";
+                }
+              }}
+            />
+          </span>
+        </span>
+      </div>
+    </label>
+  );
+}
+
 export default function CompanyEditor({ company, themeSettings, banner, selectedSlug, onCompanyChange, onThemeChange, onBannerChange }) {
+  const uploadsDisabled = !selectedSlug;
+  const uploadHelper = uploadsDisabled ? "Save once to enable uploads" : "Paste URL or upload";
+
   return (
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="sm:col-span-2">
-          <label className="block space-y-2">
-            <span className="text-sm font-medium text-slate-700">Company slug</span>
-            <input
-              type="text"
-              value={selectedSlug || "Not created yet"}
-              readOnly
-              className="w-full rounded-[20px] border border-slate-200 bg-slate-100 px-4 py-3.5 text-sm text-slate-500 outline-none"
-            />
-          </label>
-        </div>
         <InputField
           label="Company name"
           value={company.name}
@@ -84,7 +137,7 @@ export default function CompanyEditor({ company, themeSettings, banner, selected
           onChange={(value) => onBannerChange("headline", value)}
           placeholder="Careers at Northstar"
         />
-        <InputField
+        <MediaUrlField
           label="Banner image URL"
           value={themeSettings.bannerImageUrl}
           onChange={(value) => {
@@ -92,6 +145,13 @@ export default function CompanyEditor({ company, themeSettings, banner, selected
             onBannerChange("imageUrl", value);
           }}
           placeholder="https://..."
+          helper={uploadHelper}
+          uploadLabel="Upload banner image"
+          disabled={uploadsDisabled}
+          onUpload={async (file) => {
+            const asset = await uploadCompanyAsset(selectedSlug, file, "banner");
+            return asset.publicUrl;
+          }}
         />
         <div className="sm:col-span-2">
           <label className="block space-y-2">
@@ -105,11 +165,18 @@ export default function CompanyEditor({ company, themeSettings, banner, selected
             />
           </label>
         </div>
-        <InputField
+        <MediaUrlField
           label="Logo image URL"
           value={themeSettings.logoImageUrl}
           onChange={(value) => onThemeChange("logoImageUrl", value)}
           placeholder="https://..."
+          helper={uploadHelper}
+          uploadLabel="Upload logo image"
+          disabled={uploadsDisabled}
+          onUpload={async (file) => {
+            const asset = await uploadCompanyAsset(selectedSlug, file, "logo");
+            return asset.publicUrl;
+          }}
         />
         <InputField
           label="Culture video URL"
