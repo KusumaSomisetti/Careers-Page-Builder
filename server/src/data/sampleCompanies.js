@@ -2,6 +2,7 @@ export const sampleCompanies = [
   {
     name: "Stripe",
     slug: "stripe",
+    password: "HirePoint123!",
     logo: "ST",
     banner: "Build financial infrastructure that helps ambitious businesses move faster.",
     about:
@@ -10,6 +11,7 @@ export const sampleCompanies = [
   {
     name: "Notion",
     slug: "notion",
+    password: "HirePoint123!",
     logo: "NO",
     banner: "Create calm, powerful software that helps teams write, plan, and collaborate.",
     about:
@@ -18,6 +20,7 @@ export const sampleCompanies = [
   {
     name: "Figma",
     slug: "figma",
+    password: "HirePoint123!",
     logo: "FG",
     banner: "Design tools for teams who turn ideas into products together.",
     about:
@@ -26,6 +29,7 @@ export const sampleCompanies = [
   {
     name: "Atlassian",
     slug: "atlassian",
+    password: "HirePoint123!",
     logo: "AT",
     banner: "Help teams around the world plan, build, and ship better software.",
     about:
@@ -34,6 +38,7 @@ export const sampleCompanies = [
   {
     name: "Vercel",
     slug: "vercel",
+    password: "HirePoint123!",
     logo: "VE",
     banner: "Ship fast, polished web products with the best developer experience possible.",
     about:
@@ -42,6 +47,7 @@ export const sampleCompanies = [
   {
     name: "Shopify",
     slug: "shopify",
+    password: "HirePoint123!",
     logo: "SH",
     banner: "Build commerce software that empowers entrepreneurs at global scale.",
     about:

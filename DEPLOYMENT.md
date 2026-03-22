@@ -7,8 +7,6 @@
 
 ## 1. Deploy the backend to Render
 
-You can either use the included `render.yaml` or configure the service manually.
-
 ### Render settings
 - Service type: `Web Service`
 - Root directory: `server`
@@ -26,14 +24,6 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 PORT=3000
 PUBLIC_APP_URL=https://your-vercel-app.vercel.app
 ALLOWED_ORIGINS=https://your-vercel-app.vercel.app
-```
-
-If you use a custom frontend domain later, add it to `ALLOWED_ORIGINS` as a comma-separated list.
-
-Example:
-
-```env
-ALLOWED_ORIGINS=https://your-vercel-app.vercel.app,https://careers.yourdomain.com
 ```
 
 After deploy, note the Render URL, for example:
@@ -75,5 +65,4 @@ Check these after deployment:
 - Saving draft and fetching jobs work from Vercel
 - Share link points to the deployed frontend URL
 
-## Local frontend env
-Use [client/.env.example](client/.env.example) as your local template.
+After every new commit in github the vercel and render will redeploy automatically.

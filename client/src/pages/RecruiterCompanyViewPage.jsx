@@ -1,6 +1,7 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import AppShell from "../components/dashboard/AppShell";
 import CareersPageView from "../components/careers/CareersPageView";
+import { CareersPageSkeleton } from "../components/Skeleton";
 import { fetchCareerPageEditor, fetchJobs, getErrorMessage } from "../services/api";
 
 const lifeGallery = [
@@ -11,7 +12,7 @@ const lifeGallery = [
   "https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=1200&q=80"
 ];
 
-export default function RecruiterCompanyViewPage({ companySlug, onBack, onEdit }) {
+export default function RecruiterCompanyViewPage({ companySlug, onEdit }) {
   const [state, setState] = useState({ loading: true, error: "" });
   const [page, setPage] = useState(null);
   const [jobs, setJobs] = useState([]);
@@ -55,34 +56,33 @@ export default function RecruiterCompanyViewPage({ companySlug, onBack, onEdit }
     };
   }, [companySlug]);
 
-  const draft = useMemo(() => page?.careerPage?.draft || { themeSettings: {}, banner: {}, sections: [] }, [page]);
+  const published = useMemo(() => page?.careerPage?.published || null, [page]);
 
   return (
     <AppShell>
-      <main className="mx-auto min-h-screen max-w-[110rem] px-3 pb-14 pt-5 sm:px-5 lg:px-6 xl:px-8">
-        <div className="mx-auto w-full max-w-[96rem]">
-          <div className="mb-5 flex items-center justify-between">
-            <button type="button" onClick={onBack} className="rounded-full bg-white/90 px-4 py-2 text-sm font-medium text-slate-600 shadow-[0_10px_24px_rgba(15,23,42,0.10)]">Back</button>
-            <div className="rounded-full bg-white/92 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 shadow-[0_10px_24px_rgba(15,23,42,0.10)]">Recruiter View</div>
-          </div>
+      <main className="min-h-screen overflow-x-clip pb-0 pt-0">
+        {state.error ? <div className="mx-3 mt-3 rounded-[24px] border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700 sm:mx-5 lg:mx-6 xl:mx-8">{state.error}</div> : null}
 
-          {state.error ? <div className="rounded-[24px] border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700">{state.error}</div> : null}
-
-          {state.loading ? (
-            <div className="rounded-[34px] border border-slate-200/80 bg-white px-6 py-12 text-center text-sm text-slate-500 shadow-[0_20px_60px_rgba(15,23,42,0.08)]">Loading company careers page...</div>
-          ) : page ? (
+        {state.loading ? (
+          <CareersPageSkeleton showEdit />
+        ) : page ? (
+          published ? (
             <CareersPageView
               companyName={page.company.name}
-              themeSettings={draft.themeSettings}
-              banner={draft.banner}
-              sections={draft.sections}
+              themeSettings={published.themeSettings}
+              banner={published.banner}
+              sections={published.sections}
               jobs={jobs}
               fallbackLifeImages={lifeGallery}
               showEdit
               onEdit={() => onEdit(companySlug)}
             />
-          ) : null}
-        </div>
+          ) : (
+            <div className="mx-3 mt-3 rounded-[24px] border border-slate-200 bg-white px-5 py-6 text-sm text-slate-600 shadow-[0_12px_30px_rgba(15,23,42,0.05)] sm:mx-5 lg:mx-6 xl:mx-8">
+              The published careers page is not available yet. Open the editor to continue building and use <span className="font-semibold text-slate-950">Save</span> when you are ready to publish.
+            </div>
+          )
+        ) : null}
       </main>
     </AppShell>
   );

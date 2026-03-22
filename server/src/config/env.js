@@ -24,5 +24,6 @@ export const env = {
   publicAppUrl: process.env.PUBLIC_APP_URL || "http://localhost:5173",
   allowedOrigins: parseAllowedOrigins(process.env.ALLOWED_ORIGINS),
   supabaseUrl: readRequiredEnv("SUPABASE_URL"),
-  supabaseServiceRoleKey: readRequiredEnv("SUPABASE_SERVICE_ROLE_KEY")
+  supabaseServiceRoleKey: readRequiredEnv("SUPABASE_SERVICE_ROLE_KEY"),
+  supabaseStorageBucket: process.env.SUPABASE_STORAGE_BUCKET || "career-assets"
 };

@@ -5,6 +5,8 @@ import {
   publishCareerPage,
   updateCareerPageDraft
 } from "../services/careerPageService.js";
+import { uploadCareerPageAsset } from "../services/storageService.js";
+import { HttpError } from "../utils/httpError.js";
 import { getJobsByCompanySlug } from "../services/jobService.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
@@ -36,4 +38,17 @@ export const getPublicCareerPageController = asyncHandler(async (request, respon
   });
   const careerPage = await getPublicCareerPageBySlug(request.params.slug, jobs);
   response.json(careerPage);
+});
+
+export const uploadCareerPageAssetController = asyncHandler(async (request, response) => {
+  if (!request.file) {
+    throw new HttpError(400, "Please choose an image to upload.");
+  }
+
+  const asset = await uploadCareerPageAsset(request.params.slug, {
+    kind: request.body.kind,
+    file: request.file
+  });
+
+  response.status(201).json(asset);
 });

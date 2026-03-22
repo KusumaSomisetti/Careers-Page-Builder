@@ -2,6 +2,7 @@ import {
   createCompany,
   getCompanyBySlug,
   listCompanies,
+  loginCompanyByName,
   updateCompanyBySlug
 } from "../services/companyService.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -12,8 +13,15 @@ export const listCompaniesController = asyncHandler(async (_request, response) =
   response.json(companies);
 });
 
+export const loginCompanyController = asyncHandler(async (request, response) => {
+  assertRequiredFields(request.body, ["name", "password"]);
+
+  const company = await loginCompanyByName(request.body.name, request.body.password);
+  response.json(company);
+});
+
 export const createCompanyController = asyncHandler(async (request, response) => {
-  assertRequiredFields(request.body, ["name"]);
+  assertRequiredFields(request.body, ["name", "password"]);
 
   const company = await createCompany(request.body);
   response.status(201).json(company);

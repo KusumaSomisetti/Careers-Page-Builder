@@ -1,15 +1,15 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import BrandMark from "../BrandMark";
 
-function MenuIcon() {
+function BackButton({ onClick }) {
   return (
-    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/92 shadow-[0_10px_24px_rgba(15,23,42,0.10)]">
-      <div className="space-y-1.5">
-        <div className="h-0.5 w-5 rounded-full bg-slate-800" />
-        <div className="h-0.5 w-5 rounded-full bg-slate-800" />
-        <div className="h-0.5 w-5 rounded-full bg-slate-800" />
-      </div>
-    </div>
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex h-11 min-w-11 items-center justify-center rounded-2xl bg-white/92 px-4 text-sm font-medium text-slate-700 shadow-[0_10px_24px_rgba(15,23,42,0.10)] transition hover:bg-white"
+    >
+      <span aria-hidden="true" className="text-lg">&larr;</span>
+    </button>
   );
 }
 
@@ -59,18 +59,15 @@ function LogoBadge({ companyName, logoText, logoImageUrl, accentColor }) {
   );
 }
 
-function ActionButton({ label, onClick }) {
+function ActionButton({ onClick }) {
   return (
     <button
       type="button"
-      aria-label={label}
+      aria-label="Want to edit?"
       onClick={onClick}
-      className="inline-flex h-11 min-w-11 items-center justify-center rounded-2xl bg-slate-950 px-4 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(15,23,42,0.18)] transition hover:-translate-y-0.5 hover:bg-slate-800"
+      className="inline-flex h-11 items-center justify-center rounded-full bg-slate-950 px-5 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(15,23,42,0.18)] transition hover:-translate-y-0.5 hover:bg-slate-800"
     >
-      <span className="hidden sm:inline">{label}</span>
-      <span className="sm:hidden">
-        <EditIcon />
-      </span>
+      <span>Want to edit?</span>
     </button>
   );
 }
@@ -99,6 +96,18 @@ function LifeCarousel({ images }) {
       setActiveIndex(0);
     }
   }, [activeIndex, total]);
+
+  useEffect(() => {
+    if (total <= 1) {
+      return undefined;
+    }
+
+    const intervalId = window.setInterval(() => {
+      setActiveIndex((current) => (current + 1) % total);
+    }, 4200);
+
+    return () => window.clearInterval(intervalId);
+  }, [total]);
 
   if (images.length === 0) {
     return (
@@ -193,7 +202,7 @@ function RoleGroupScroller({ groups, selectedTitle, onSelect }) {
             key={group.title}
             type="button"
             onClick={() => onSelect(group.title)}
-            className={`w-[18rem] shrink-0 snap-start rounded-[24px] border p-5 text-left shadow-[0_14px_34px_rgba(15,23,42,0.08)] transition sm:w-[20rem] ${
+            className={`w-[15.5rem] shrink-0 snap-start rounded-[22px] border p-4 text-left shadow-[0_14px_34px_rgba(15,23,42,0.08)] transition sm:w-[17rem] ${
               active
                 ? "border-slate-950 bg-slate-950 text-white"
                 : "border-slate-200/80 bg-white text-slate-950 hover:border-slate-300"
@@ -202,7 +211,7 @@ function RoleGroupScroller({ groups, selectedTitle, onSelect }) {
             <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${active ? "text-slate-300" : "text-slate-400"}`}>
               Role Family
             </p>
-            <h3 className="mt-3 text-[1.35rem] font-semibold leading-7 tracking-tight">{group.title}</h3>
+            <h3 className="mt-3 text-[1.15rem] font-semibold leading-6 tracking-tight sm:text-[1.25rem]">{group.title}</h3>
             <p className={`mt-4 text-sm font-medium ${active ? "text-slate-200" : "text-slate-600"}`}>
               {group.count} {group.count === 1 ? "opening" : "openings"}
             </p>
@@ -218,7 +227,7 @@ function RoleFilters({ search, onSearchChange, location, onLocationChange, type,
     <div className="careers-reveal grid gap-3" style={{ animationDelay: "180ms" }}>
       <label className="block">
         <span className="sr-only">Search by job title</span>
-        <div className="flex items-center gap-3 rounded-[22px] border border-slate-300/80 bg-white px-4 py-4 shadow-[0_10px_24px_rgba(15,23,42,0.05)]">
+        <div className="flex items-center gap-3 rounded-[20px] border border-slate-300/80 bg-white px-3.5 py-3.5 shadow-[0_10px_24px_rgba(15,23,42,0.05)] sm:px-4 sm:py-4">
           <div style={{ color: accentColor }}>
             <SearchIcon />
           </div>
@@ -227,7 +236,7 @@ function RoleFilters({ search, onSearchChange, location, onLocationChange, type,
             value={search}
             onChange={(event) => onSearchChange(event.target.value)}
             placeholder="Search by Job Title..."
-            className="min-w-0 flex-1 bg-transparent text-[1.05rem] text-slate-700 outline-none placeholder:text-slate-400"
+            className="min-w-0 flex-1 bg-transparent text-[0.98rem] text-slate-700 outline-none placeholder:text-slate-400 sm:text-[1.05rem]"
           />
         </div>
       </label>
@@ -239,14 +248,14 @@ function RoleFilters({ search, onSearchChange, location, onLocationChange, type,
             <select
               value={location}
               onChange={(event) => onLocationChange(event.target.value)}
-              className="w-full appearance-none rounded-full border border-slate-300/80 bg-[linear-gradient(180deg,#f8fbfd_0%,#edf3f7_100%)] px-5 py-4 pr-12 text-[1.05rem] text-slate-900 outline-none"
+              className="w-full appearance-none rounded-[20px] border border-slate-300/80 bg-[linear-gradient(180deg,#f8fbfd_0%,#edf3f7_100%)] px-4 py-3.5 pr-10 text-[0.98rem] text-slate-900 outline-none sm:rounded-full sm:px-5 sm:py-4 sm:pr-12 sm:text-[1.05rem]"
             >
               <option value="">Location</option>
               {locations.map((entry) => (
                 <option key={entry} value={entry}>{entry}</option>
               ))}
             </select>
-            <div className="pointer-events-none absolute right-5 top-1/2 -translate-y-1/2 text-slate-500"><ChevronIcon /></div>
+            <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 sm:right-5"><ChevronIcon /></div>
           </div>
         </label>
 
@@ -256,14 +265,14 @@ function RoleFilters({ search, onSearchChange, location, onLocationChange, type,
             <select
               value={type}
               onChange={(event) => onTypeChange(event.target.value)}
-              className="w-full appearance-none rounded-full border border-slate-300/80 bg-[linear-gradient(180deg,#f8fbfd_0%,#edf3f7_100%)] px-5 py-4 pr-12 text-[1.05rem] text-slate-900 outline-none"
+              className="w-full appearance-none rounded-[20px] border border-slate-300/80 bg-[linear-gradient(180deg,#f8fbfd_0%,#edf3f7_100%)] px-4 py-3.5 pr-10 text-[0.98rem] text-slate-900 outline-none sm:rounded-full sm:px-5 sm:py-4 sm:pr-12 sm:text-[1.05rem]"
             >
               <option value="">Job Type</option>
               {types.map((entry) => (
                 <option key={entry} value={entry}>{entry}</option>
               ))}
             </select>
-            <div className="pointer-events-none absolute right-5 top-1/2 -translate-y-1/2 text-slate-500"><ChevronIcon /></div>
+            <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 sm:right-5"><ChevronIcon /></div>
           </div>
         </label>
       </div>
@@ -273,16 +282,16 @@ function RoleFilters({ search, onSearchChange, location, onLocationChange, type,
 
 function JobDetailCard({ job, accentColor }) {
   return (
-    <article className="rounded-[26px] border border-slate-200/80 bg-white p-6 shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
-      <h3 className="text-[1.55rem] font-semibold leading-[1.15] tracking-tight text-slate-950">
+    <article className="rounded-[24px] border border-slate-200/80 bg-white p-5 shadow-[0_14px_34px_rgba(15,23,42,0.08)] sm:p-6">
+      <h3 className="text-[1.28rem] font-semibold leading-[1.2] tracking-tight text-slate-950 sm:text-[1.4rem]">
         {job.title} - {job.type || "Full Time"} - {job.location || "Remote"}
       </h3>
-      <p className="mt-4 text-base leading-8 text-slate-600">
+      <p className="mt-3 text-sm leading-7 text-slate-600 sm:text-[0.95rem]">
         {job.summary || "Description and responsibilities for this role will be added shortly."}
       </p>
       <button
         type="button"
-        className="mt-6 inline-flex min-w-[220px] items-center justify-center rounded-full px-6 py-3.5 text-lg font-medium text-white shadow-[0_16px_34px_rgba(13,148,136,0.24)]"
+        className="mt-5 inline-flex min-w-[180px] items-center justify-center rounded-full px-5 py-3 text-base font-medium text-white shadow-[0_16px_34px_rgba(13,148,136,0.24)] sm:min-w-[220px] sm:px-6 sm:py-3.5 sm:text-lg"
         style={{ background: `linear-gradient(90deg, ${accentColor}, #2f9da5)` }}
       >
         Apply Now
@@ -378,7 +387,8 @@ export default function CareersPageView({
   jobs,
   showEdit = false,
   onEdit,
-  fallbackLifeImages = []
+  fallbackLifeImages = [],
+  onBack
 }) {
   const accentColor = themeSettings?.accentColor || "#0f766e";
   const primaryColor = themeSettings?.primaryColor || "#0f172a";
@@ -386,11 +396,13 @@ export default function CareersPageView({
   const visibleSections = (sections || []).filter((section) => section.isVisible);
 
   return (
-    <div className="w-full max-w-full overflow-x-clip rounded-[34px] border border-slate-200/80 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.10)] lg:rounded-[38px]">
+    <div className="w-full max-w-full overflow-x-clip border border-slate-200/80 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.10)]">
       <div className="flex items-center justify-between gap-4 px-5 pb-5 pt-5 sm:px-6 sm:pt-6 lg:px-8">
-        <MenuIcon />
-        <LogoBadge companyName={companyName} logoText={themeSettings?.logoText} logoImageUrl={themeSettings?.logoImageUrl} accentColor={accentColor} />
-        {showEdit ? <ActionButton label="Edit" onClick={onEdit} /> : <div className="h-11 w-11 shrink-0" aria-hidden="true" />}
+        <div className="flex min-w-0 items-center gap-4">
+          {onBack ? <BackButton onClick={onBack} /> : null}
+          <LogoBadge companyName={companyName} logoText={themeSettings?.logoText} logoImageUrl={themeSettings?.logoImageUrl} accentColor={accentColor} />
+        </div>
+        {showEdit ? <ActionButton onClick={onEdit} /> : null}
       </div>
 
       <section
