@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faCheck,
@@ -18,6 +18,7 @@ import { dashboardSections, initialCareerPage } from "../data/careers";
 import {
   createCompany,
   createJob,
+  deleteJob,
   fetchCareerPageEditor,
   fetchJobs,
   getErrorMessage,
@@ -47,6 +48,7 @@ function toBuilderState(editorPage, jobs) {
       primaryColor: editorPage.careerPage.draft.themeSettings?.primaryColor || "#0f172a",
       secondaryColor: editorPage.careerPage.draft.themeSettings?.secondaryColor || "#475569",
       accentColor: editorPage.careerPage.draft.themeSettings?.accentColor || "#0f766e",
+      mode: editorPage.careerPage.draft.themeSettings?.mode || "light",
       bannerImageUrl: editorPage.careerPage.draft.themeSettings?.bannerImageUrl || "",
       logoImageUrl: editorPage.careerPage.draft.themeSettings?.logoImageUrl || "",
       logoText: editorPage.careerPage.draft.themeSettings?.logoText || editorPage.company.logo || "",
@@ -316,6 +318,7 @@ export default function DashboardPage({ initialCompanySlug = "stripe", initialSe
   const [isSaveMenuOpen, setIsSaveMenuOpen] = useState(false);
   const [isShareSheetOpen, setIsShareSheetOpen] = useState(false);
   const [draftPromptState, setDraftPromptState] = useState({ open: false, clearing: false, publishedState: null });
+  const [deletedJobIds, setDeletedJobIds] = useState([]);
 
   useEffect(() => {
     setSelectedCompanySlug(initialCompanySlug || "");
@@ -355,6 +358,7 @@ export default function DashboardPage({ initialCompanySlug = "stripe", initialSe
 
         setCompanyExists(true);
         setCareerPage(toBuilderState(editorPage, jobs));
+        setDeletedJobIds([]);
         setDraftPromptState({
           open: hasUnpublishedDraftChanges(editorPage),
           clearing: false,
@@ -409,6 +413,18 @@ export default function DashboardPage({ initialCompanySlug = "stripe", initialSe
     setSectionsStatus(createEmptyStatus());
     setCareerPage((current) => ({ ...current, jobs: [...current.jobs, createDraftJob(current.jobs.length + 1)] }));
     selectSection("sections");
+  };
+
+  const removeJobDraft = (jobId) => {
+    setSectionsStatus(createEmptyStatus());
+    setCareerPage((current) => ({
+      ...current,
+      jobs: current.jobs.filter((job) => job.id !== jobId)
+    }));
+
+    if (!isDraftJob({ id: jobId })) {
+      setDeletedJobIds((current) => (current.includes(jobId) ? current : [...current, jobId]));
+    }
   };
 
   const persistCompany = async () => {
@@ -474,6 +490,11 @@ export default function DashboardPage({ initialCompanySlug = "stripe", initialSe
       })
     );
 
+    if (deletedJobIds.length > 0) {
+      await Promise.all(deletedJobIds.map((jobId) => deleteJob(jobId)));
+      setDeletedJobIds([]);
+    }
+
     const refreshedJobs = await fetchJobs({ companySlug: slug });
     setCareerPage((current) => ({ ...current, jobs: refreshedJobs }));
     return refreshedJobs;
@@ -524,6 +545,7 @@ export default function DashboardPage({ initialCompanySlug = "stripe", initialSe
         sections: restored.sections
       });
       setCareerPage(restored);
+      setDeletedJobIds([]);
       setEditorStatuses({ saving: false, error: "", success: "Draft cleared." });
       setDraftPromptState({ open: false, clearing: false, publishedState: null });
     } catch (error) {
@@ -616,7 +638,7 @@ export default function DashboardPage({ initialCompanySlug = "stripe", initialSe
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-teal-700">Job Roles</p>
               <h3 className="mt-2 text-lg font-semibold tracking-tight text-slate-950">Add or edit job roles</h3>
             </div>
-            <JobsEditor jobs={careerPage.jobs} onUpdateJob={updateJobField} onAddJob={addJobDraft} />
+            <JobsEditor jobs={careerPage.jobs} onUpdateJob={updateJobField} onAddJob={addJobDraft} onDeleteJob={removeJobDraft} />
           </div>
         </div>
       )
@@ -684,3 +706,5 @@ export default function DashboardPage({ initialCompanySlug = "stripe", initialSe
     </AppShell>
   );
 }
+
+

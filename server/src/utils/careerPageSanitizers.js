@@ -12,6 +12,7 @@ function normalizeSection(section, index) {
 
 export function sanitizeThemeSettings(themeSettings = {}) {
   return {
+    mode: themeSettings.mode === "dark" ? "dark" : "light",
     primaryColor: themeSettings.primaryColor ?? "#0f172a",
     secondaryColor: themeSettings.secondaryColor ?? "#475569",
     accentColor: themeSettings.accentColor ?? "#0f766e",

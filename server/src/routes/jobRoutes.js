@@ -1,9 +1,10 @@
 import { Router } from "express";
-import { getJobsController, updateJobController } from "../controllers/jobController.js";
+import { deleteJobController, getJobsController, updateJobController } from "../controllers/jobController.js";
 
 const router = Router();
 
 router.get("/", getJobsController);
 router.patch("/:id", updateJobController);
+router.delete("/:id", deleteJobController);
 
 export default router;

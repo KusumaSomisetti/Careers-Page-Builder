@@ -1,4 +1,4 @@
-﻿export const dashboardSections = [
+export const dashboardSections = [
   { id: "brand", label: "Brand Theme" },
   { id: "sections", label: "Sections" },
   { id: "preview", label: "Preview" }
@@ -10,6 +10,7 @@ export const initialCareerPage = {
     logo: ""
   },
   themeSettings: {
+    mode: "light",
     primaryColor: "#0f172a",
     secondaryColor: "#475569",
     accentColor: "#0f766e",

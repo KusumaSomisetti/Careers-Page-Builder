@@ -2,20 +2,28 @@ import { findCompanyRecordBySlug } from "../services/companyService.js";
 import { supabase } from "../lib/supabase.js";
 import { HttpError } from "../utils/httpError.js";
 
+function sanitizeText(value) {
+  return String(value || "")
+    .replace(/[\uFFFD\u2022\u00B7\u2219\u22C5]+/g, " - ")
+    .replace(/\s+-\s+-\s+/g, " - ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
 function mapJob(job) {
   return {
     id: job.id,
     companyId: job.company_id,
-    title: job.title,
-    location: job.location,
-    type: job.type,
-    summary: job.summary,
-    workPolicy: job.work_policy,
-    department: job.department,
-    employmentType: job.employment_type,
-    experienceLevel: job.experience_level,
-    jobType: job.job_type,
-    salaryRange: job.salary_range,
+    title: sanitizeText(job.title),
+    location: sanitizeText(job.location),
+    type: sanitizeText(job.type),
+    summary: sanitizeText(job.summary),
+    workPolicy: sanitizeText(job.work_policy),
+    department: sanitizeText(job.department),
+    employmentType: sanitizeText(job.employment_type),
+    experienceLevel: sanitizeText(job.experience_level),
+    jobType: sanitizeText(job.job_type),
+    salaryRange: sanitizeText(job.salary_range),
     jobSlug: job.job_slug,
     postedDaysAgo: job.posted_days_ago,
     createdAt: job.created_at,
@@ -85,6 +93,23 @@ export async function updateJobById(id, updates) {
   return mapJob(data);
 }
 
+export async function deleteJobById(id) {
+  const { data, error } = await supabase
+    .from("jobs")
+    .delete()
+    .eq("id", id)
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  if (!data) {
+    throw new HttpError(404, "Job not found");
+  }
+}
+
 export async function getJobs(filters) {
   let query = supabase
     .from("jobs")
@@ -129,3 +154,4 @@ export async function getJobsByCompanySlug(slug, filters = {}) {
     search: filters.search
   });
 }
+

@@ -2,7 +2,7 @@
 
 ## Overview
 
-HirePoint is a careers page builder designed to help companies create branded, customizable careers pages without more effort. The system supports two primary user flows:
+HirePoint is a careers page builder designed to help companies create branded, customizable careers pages with minimal effort. The system supports two primary user flows:
 
 * **Candidates** browsing companies and job listings through a public interface
 * **Recruiters** editing and managing their company’s careers page through a dashboard
@@ -19,8 +19,9 @@ A few assumptions were made while designing the system:
 * Careers pages exist in two states: **draft** and **published**
 * Public users should land directly on a company’s careers page through a shareable link
 * Editing is done in draft mode, and publishing updates the public view
-* File uploads are simplified as URL inputs for now
-* Authentication is not fully implemented 
+* Recruiters authenticate using company-based login (company name + password)
+* Media uploads are supported via Supabase Storage (with URL fallback support)
+* Editing is done in draft mode, and publishing updates the public view
 
 ## Architecture
 
@@ -46,6 +47,11 @@ Supabase  → PostgreSQL database
 * Frontend communicates with backend using a centralized `api.js` service layer
 * Backend interacts with Supabase
 
+### Storage
+
+* Supabase Storage is used for handling media uploads (logos, banners, gallery images)
+* Supports both direct file uploads and external URLs
+
 ## Frontend Architecture
 
 The frontend is a single-page React application with multiple top-level views:
@@ -63,7 +69,7 @@ The dashboard is split into two main areas:
 ### 1. Editing Controls
 
 * Brand settings (colors, logo, banner)
-* Section management (add/remove/reorder/toggle)
+* Section management (add/remove/reorder/toggle with drag-and-drop support)
 * Job management
 
 ### 2. Live Preview
@@ -76,6 +82,12 @@ This allows recruiters to see changes in real time.
 ## Backend Design
 
 The backend exposes REST APIs under `/api`.
+
+### Authentication Flow
+
+* Recruiters can log in using company credentials
+* New companies can be created during the login flow
+* Each recruiter is scoped to their own company data
 
 ### Core API Responsibilities
 
@@ -100,6 +112,7 @@ Fields:
 * logo
 * banner
 * about
+* password
 
 ### 2. Career Pages
 
@@ -109,8 +122,10 @@ Fields:
 * company_id
 * draft_theme_settings
 * draft_sections
+* draft_banner
 * published_theme_settings
 * published_sections
+* published_banner
 * is_published
 * published_at
 
@@ -130,12 +145,15 @@ Fields:
 
 ### Recruiter Features
 
+* Secure recruiter login (company-based authentication)
+* Company creation flow
 * Edit branding (logo, colors, banner)
-* Manage sections (add/remove/reorder/toggle)
+* Media upload support (file upload + URL input)
+* Manage sections (add/remove/reorder/toggle with drag-and-drop)
 * Add and edit jobs
 * Live preview while editing
 * Save draft changes
-* Generate shareable careers page link
+* Publish and share careers page via link
 
 ### Candidate Features
 
@@ -143,6 +161,7 @@ Fields:
 * Search across companies and jobs
 * View company-specific careers pages
 * Filter jobs by location and type
+* Access only published careers pages
 
 ## UX Considerations
 
@@ -150,6 +169,8 @@ Fields:
 * Clean, minimal design
 * Consistent spacing and typography
 * Smooth navigation and transitions
+* Stable loading states (skeleton loaders)
+* Responsive behavior across mobile and desktop
 
 ## Testing Approach
 
@@ -164,26 +185,25 @@ Testing was primarily manual and scenario-based.
 * Careers page rendering
 * Public share link behavior
 
-## Present Gaps 
+## Known Limitations 
 
-* No real authentication or authorization layer
-* File uploads are URL-based only
-* Drag-and-drop reordering not implemented yet
+* Authentication is basic and not fully role-based (no multi-user support per company)
 * Limited validation for inputs (colors, URLs, etc.)
 * Accessibility not fully audited
+* No automated test coverage yet
 
 ## Scalability Considerations
 
 If extended further, the following would need attention:
 
 * Proper auth system (multi-tenant support)
-* Media storage (Supabase Storage or S3)
 * Pagination for jobs and companies
-* Caching public careers pages
-* Role-based permissions
+* Improving auth system for multi-user/company roles
+* Adding caching for public careers pages
+* Enhancing API performance for large datasets
 
 ## Final Notes
 
-The focus of this implementation was to build a **clean, usable, and extensible prototype** rather than a fully production-ready system.
+The focus of this implementation was to build a clean, usable, and extensible system that closely resembles a real-world product.
 
-The system is structured in a way that can be iterated on easily and extended into a full ATS product.
+The current version includes core product features such as authentication, media handling, and structured content management, and is designed to be extended into a full ATS platform.

@@ -1,5 +1,5 @@
 # HirePoint – Careers Page Builder
-Companies using this ATS want their Careers page to match their brand, tell their story, and make it effortless for candidates to discover and apply to open roles. 
+HirePoint is a careers page builder that allows companies to create branded, customizable careers pages and lets candidates explore roles through a clean, mobile-first experience.
 
 ## Features
 
@@ -15,21 +15,25 @@ Companies using this ATS want their Careers page to match their brand, tell thei
   * About section
   * Life at Company section
   * Open roles with filtering (location, job type, title)
+  * Only published careers pages are accessible publicly
 
 ### Recruiter Side
 
 * Recruiter access flow:
+  * Login using company name and password
+  * Create a new company during login
 
-  * Select existing company
-  * Create a new company
-  * Careers page editor:
+* Careers page editor:
   * Brand theme editing (colors, logo, banner)
-  * Section management (add, remove, reorder, toggle visibility)
-  * Job management (add/edit roles)
+  * Media upload support (file upload + URL input)
+  * Section management (add, remove, reorder with drag-and-drop, toggle visibility)
+  * Job management (add/edit/delete roles)
   * Live preview while editing
-  * Save and share workflow:
+
+* Save and publish workflow:
   * Save draft changes
-  * Share/publish careers page via link
+  * Publish careers page
+  * Share careers page via link
 
 ## Tech Stack
 
@@ -46,6 +50,74 @@ Companies using this ATS want their Careers page to match their brand, tell thei
 **Database**
 
 * Supabase (PostgreSQL)
+
+## Step-by-Step User Guide
+
+### Candidate Flow
+
+1. Open the landing page
+2. Browse featured companies
+3. Use search to filter companies and jobs
+4. Click **Browse All Jobs** to view roles
+5. Click **Explore Companies** to view company cards
+6. Click a company card → opens careers page in a new tab
+7. Browse:
+
+   * About
+   * Life at Company
+   * Open Roles
+8. Filter jobs by:
+
+   * Title
+   * Location
+   * Job type
+
+### Recruiter Flow
+
+1. Open landing page
+2. Click **Recruiter Login**
+3. Login using company credentials or create a new company
+4. Continue to recruiter company view
+5. Click **Edit** to open builder
+
+### Recruiter Builder Flow
+
+#### Brand Theme
+
+* Edit:
+  * Company name
+  * Logo (text/image)
+  * Colors
+  * Banner content
+  * Culture video URL
+
+#### Sections
+
+* Reorder sections
+* Toggle visibility
+* Edit:
+  * About section
+  * Life at Company (including gallery)
+  * Open Roles headline
+  * Custom sections
+
+#### Jobs
+
+* Add new job
+* Edit existing job
+* Update:
+  * Title
+  * Location
+  * Type
+  * Summary
+
+#### Preview & Share
+
+* Use live preview to check UI
+* Save changes
+* Share careers page:
+  * Copy link
+  * share 
 
 ## How To Run
 
@@ -117,85 +189,14 @@ ALLOWED_ORIGINS=
 VITE_API_BASE_URL=
 ```
 
-## Step-by-Step User Guide
-
-### Candidate Flow
-
-1. Open the landing page
-2. Browse featured companies
-3. Use search to filter companies and jobs
-4. Click **Browse All Jobs** to view roles
-5. Click **Explore Companies** to view company cards
-6. Click a company card → opens careers page in a new tab
-7. Browse:
-
-   * About
-   * Life at Company
-   * Open Roles
-8. Filter jobs by:
-
-   * Title
-   * Location
-   * Job type
-
-### Recruiter Flow
-
-1. Open landing page
-2. Click **Recruiter Login**
-3. Select an existing company or create a new one
-4. Continue to recruiter company view
-5. Click **Edit** to open builder
-
-### Recruiter Builder Flow
-
-#### Brand Theme
-
-* Edit:
-  * Company name
-  * Logo (text/image)
-  * Colors
-  * Banner content
-  * Culture video URL
-
-#### Sections
-
-* Reorder sections
-* Toggle visibility
-* Edit:
-  * About section
-  * Life at Company (including gallery)
-  * Open Roles headline
-  * Custom sections
-
-#### Jobs
-
-* Add new job
-* Edit existing job
-* Update:
-  * Title
-  * Location
-  * Type
-  * Summary
-
-#### Preview & Share
-
-* Use live preview to check UI
-* Save changes
-* Share careers page:
-  * Copy link
-  * share 
-
 ## Improvement Plan
 
 ### Product Improvements
 
-* Add proper authentication and recruiter authorization
-* Enforce recruiter-to-company ownership on backend
-* Support real file uploads (logo, banner, gallery)
+* Add role-based authentication (multiple users per company)
 * Add job application links
 * Expand job fields (department, salary, experience level, etc.)
 * Improve section system with more content types
-* Add drag-and-drop section reordering
 * Improve publish/version control
 
 ### UX Improvements
@@ -209,19 +210,16 @@ VITE_API_BASE_URL=
 
 ### Engineering Improvements
 
-* Introduce proper routing (React Router)
 * Improve shared state and data fetching patterns
 * Add validation for API payloads
 * Add unit and end-to-end tests
 * Improve logging and observability
-* Optimize API calls on landing page
 * Add caching for public careers pages
 
 ## Known Limitations
 
-* Authentication is flow-based (not production-grade)
-* File uploads are URL-based only
-* Some public pages rely on fallback if not published
-* No full routing system implemented yet
-* Testing coverage is limited
+* Authentication is basic and does not support multiple users per company
+* Limited validation for inputs (colors, URLs, etc.)
+* No automated test coverage yet
+* Accessibility is not fully audited
 
