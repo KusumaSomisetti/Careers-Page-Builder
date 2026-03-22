@@ -19,7 +19,7 @@ function slugify(value) {
 
 function createSummary(row) {
   const details = [row.department, row.experience_level, row.work_policy, row.salary_range].filter(Boolean);
-  return `Join the ${row.department} team as a ${row.title}. ${details.join(" • ")}`;
+  return `Join the ${row.department} team as a ${row.title}. ${details.join(" - ")}`;
 }
 
 function getStableCompanyIndex(seed, total) {
@@ -125,16 +125,22 @@ function buildJobPayloads(rows, companiesBySlug) {
 }
 
 async function syncJobs(jobs) {
+  let insertedCount = 0;
+  let skippedExistingCount = 0;
+
   for (const job of jobs) {
     const existing = await getJobs({ companyId: job.companyId, search: job.title });
     const matched = existing.find((item) => item.jobSlug === job.jobSlug);
 
     if (!matched) {
       await addJob(job);
+      insertedCount += 1;
+    } else {
+      skippedExistingCount += 1;
     }
   }
 
-  return jobs.length;
+  return { insertedCount, skippedExistingCount };
 }
 
 function buildDistribution(jobs, companiesBySlug) {
@@ -153,11 +159,14 @@ async function main() {
   const rows = await readRows(filePath);
   const companiesBySlug = await ensureCompanies();
   const { jobs, duplicateCount } = buildJobPayloads(rows, companiesBySlug);
-  const insertedCount = await syncJobs(jobs);
+  const { insertedCount, skippedExistingCount } = await syncJobs(jobs);
   const distribution = buildDistribution(jobs, companiesBySlug);
 
-  console.log(`Imported ${insertedCount} jobs from ${filePath}`);
+  console.log(`Processed ${rows.length} spreadsheet rows from ${filePath}`);
+  console.log(`Prepared ${jobs.length} unique job payloads.`);
+  console.log(`Inserted ${insertedCount} new jobs.`);
   console.log(`Skipped ${duplicateCount} duplicate spreadsheet rows during import.`);
+  console.log(`Skipped ${skippedExistingCount} jobs already present in the database.`);
   console.table(distribution);
 }
 

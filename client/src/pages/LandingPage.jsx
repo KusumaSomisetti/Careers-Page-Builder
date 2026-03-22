@@ -6,7 +6,15 @@ import BrandMark from "../components/BrandMark";
 import { fetchCompanies, fetchJobs, getErrorMessage } from "../services/api";
 import { CardRowSkeleton, JobGridSkeleton, Skeleton } from "../components/Skeleton";
 
-const LANDING_CACHE_KEY = "hirepoint:landing-cache";
+const LANDING_CACHE_KEY = "hirepoint:landing-cache:v2";
+
+function cleanDisplayText(value) {
+  return String(value || "")
+    .replace(/[\uFFFD\u2022\u00B7\u2219\u22C5]+/g, " - ")
+    .replace(/\s+-\s+-\s+/g, " - ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
 
 function readLandingCache() {
   if (typeof window === "undefined") {
@@ -107,20 +115,35 @@ function useAnimatedCount(target, loading) {
   return count;
 }
 
-function CompanyLogo({ company }) {
+function CompanyLogo({ company, size = "default" }) {
+  const containerClassName =
+    size === "compact"
+      ? "flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-[linear-gradient(180deg,#f8fafc_0%,#e2e8f0_100%)] text-slate-500 shadow-[0_10px_24px_rgba(15,23,42,0.08)] sm:h-18 sm:w-18"
+      : "flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-[linear-gradient(180deg,#f8fafc_0%,#e2e8f0_100%)] text-slate-500 shadow-[0_10px_24px_rgba(15,23,42,0.08)] sm:h-24 sm:w-24";
+
   if (company.logoImageUrl) {
-    return <img src={company.logoImageUrl} alt={company.name} className="h-20 w-20 rounded-[22px] object-cover sm:h-24 sm:w-24" />;
+    return (
+      <div className={containerClassName}>
+        <img src={company.logoImageUrl} alt={company.name} className="h-full w-full object-cover" />
+      </div>
+    );
   }
 
   if (company.logoText || company.logo) {
     return (
-      <span className="text-2xl font-semibold uppercase tracking-[0.2em] text-slate-700 sm:text-3xl">
-        {(company.logoText || company.logo || company.name.slice(0, 2)).slice(0, 3)}
-      </span>
+      <div className={containerClassName}>
+        <span className="px-2 text-center text-lg font-semibold uppercase tracking-[0.12em] text-slate-700 sm:text-xl">
+          {(company.logoText || company.logo || company.name.slice(0, 2)).slice(0, 3)}
+        </span>
+      </div>
     );
   }
 
-  return <BrandMark />;
+  return (
+    <div className={containerClassName}>
+      <BrandMark />
+    </div>
+  );
 }
 
 function SnapshotValue({ label, value, loading }) {
@@ -139,10 +162,10 @@ function CompanyCard({ company, openRoles, onOpen }) {
     <button
       type="button"
       onClick={() => onOpen(company)}
-      className="w-[260px] shrink-0 rounded-[26px] border border-slate-200/90 bg-white p-5 text-left shadow-[0_12px_36px_rgba(15,23,42,0.08)] transition hover:-translate-y-1 hover:shadow-[0_18px_50px_rgba(15,23,42,0.12)] sm:w-[300px] lg:w-[340px]"
+      className="flex w-[220px] shrink-0 flex-col items-center justify-center rounded-[26px] border border-slate-200/90 bg-white p-5 text-center shadow-[0_12px_36px_rgba(15,23,42,0.08)] transition hover:-translate-y-1 hover:shadow-[0_18px_50px_rgba(15,23,42,0.12)] sm:w-[250px] lg:w-[280px]"
     >
-      <div className="mb-5 flex h-32 items-center justify-center rounded-[18px] bg-[linear-gradient(180deg,#eef2f7_0%,#e2e8f0_100%)] text-slate-400 shadow-inner sm:h-36 lg:h-40">
-        <CompanyLogo company={company} />
+      <div className="mb-5 flex items-center justify-center">
+        <CompanyLogo company={company} size="compact" />
       </div>
       <p className="text-[1.7rem] font-semibold tracking-tight text-slate-950 sm:text-[1.9rem]">{company.name}</p>
       <p className="mt-1 text-[1.1rem] text-slate-700">{openRoles} Open Roles</p>
@@ -158,7 +181,7 @@ function ExpandedCompanyCard({ company, openRoles, onOpen }) {
       className="flex w-full items-center gap-4 rounded-[24px] border border-slate-200/90 bg-white p-4 text-left shadow-[0_12px_36px_rgba(15,23,42,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_42px_rgba(15,23,42,0.10)] sm:p-5"
     >
       <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-[18px] bg-[linear-gradient(180deg,#eef2f7_0%,#e2e8f0_100%)] text-slate-400 shadow-inner sm:h-24 sm:w-24">
-        <CompanyLogo company={company} />
+        <CompanyLogo company={company} size="compact" />
       </div>
       <div className="min-w-0">
         <p className="text-xl font-semibold tracking-tight text-slate-950 sm:text-2xl">{company.name}</p>
@@ -170,12 +193,16 @@ function ExpandedCompanyCard({ company, openRoles, onOpen }) {
 }
 
 function JobResultCard({ job }) {
+  const location = cleanDisplayText(job.location);
+  const type = cleanDisplayText(job.type);
+  const summary = cleanDisplayText(job.summary);
+
   return (
     <article className="rounded-[26px] border border-slate-200/80 bg-white p-5 shadow-[0_12px_36px_rgba(15,23,42,0.06)]">
       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">{job.company?.name || "Company"}</p>
       <h3 className="mt-3 text-xl font-semibold tracking-tight text-slate-950">{job.title}</h3>
-      <p className="mt-2 text-sm text-slate-500">{job.location} � {job.type}</p>
-      <p className="mt-3 text-sm leading-7 text-slate-600">{job.summary}</p>
+      <p className="mt-2 text-sm text-slate-500">{location} - {type}</p>
+      <p className="mt-3 text-sm leading-7 text-slate-600">{summary}</p>
     </article>
   );
 }
@@ -319,7 +346,7 @@ export default function LandingPage({ onRecruiterLogin }) {
           <div className="mt-8 rounded-[32px] border border-white/80 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.96),_rgba(226,232,240,0.68))] p-5 shadow-[0_20px_60px_rgba(15,23,42,0.08)] sm:p-6 lg:mt-1">
             <div className="flex items-center justify-between gap-3">
               <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-400">HirePoint Snapshot</p>
-              {state.refreshing ? <span className="text-xs font-medium text-slate-400">Refreshing�</span> : null}
+              {state.refreshing ? <span className="text-xs font-medium text-slate-400">Refreshing...</span> : null}
             </div>
             <div className="mt-4 grid grid-cols-2 gap-4">
               <SnapshotValue label="Companies" value={companies.length} loading={state.loading} />
@@ -448,4 +475,5 @@ export default function LandingPage({ onRecruiterLogin }) {
     </AppShell>
   );
 }
+
 

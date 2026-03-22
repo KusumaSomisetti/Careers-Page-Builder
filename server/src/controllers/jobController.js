@@ -1,4 +1,4 @@
-import { addJob, getJobs, updateJobById } from "../services/jobService.js";
+import { addJob, deleteJobById, getJobs, updateJobById } from "../services/jobService.js";
 import { findCompanyRecordBySlug } from "../services/companyService.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { assertRequiredFields } from "../utils/validation.js";
@@ -18,6 +18,11 @@ export const addJobController = asyncHandler(async (request, response) => {
 export const updateJobController = asyncHandler(async (request, response) => {
   const job = await updateJobById(request.params.id, request.body);
   response.json(job);
+});
+
+export const deleteJobController = asyncHandler(async (request, response) => {
+  await deleteJobById(request.params.id);
+  response.status(204).send();
 });
 
 export const getJobsController = asyncHandler(async (request, response) => {

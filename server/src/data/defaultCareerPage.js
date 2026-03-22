@@ -1,4 +1,5 @@
 export const defaultThemeSettings = {
+  mode: "light",
   primaryColor: "#0f172a",
   secondaryColor: "#475569",
   accentColor: "#0f766e",

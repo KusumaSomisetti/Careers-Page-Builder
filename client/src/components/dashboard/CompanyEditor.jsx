@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowUpFromBracket } from "@fortawesome/free-solid-svg-icons";
+import { faArrowUpFromBracket, faMoon, faSun } from "@fortawesome/free-solid-svg-icons";
 import { uploadCompanyAsset } from "../../services/api";
 
 function InputField({ label, value, onChange, placeholder, helper, type = "text" }) {
@@ -40,6 +40,40 @@ function ColorField({ label, value, onChange }) {
         />
       </div>
     </label>
+  );
+}
+
+function ThemeModeField({ value, onChange }) {
+  const options = [
+    { id: "light", label: "Light", icon: faSun },
+    { id: "dark", label: "Dark", icon: faMoon }
+  ];
+
+  return (
+    <div className="space-y-2 sm:col-span-2 lg:col-span-3">
+      <span className="text-sm font-medium text-slate-700">Theme mode</span>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {options.map((option) => {
+          const active = value === option.id;
+
+          return (
+            <button
+              key={option.id}
+              type="button"
+              onClick={() => onChange(option.id)}
+              className={`flex items-center gap-3 rounded-[20px] border px-4 py-3.5 text-left text-sm font-medium transition ${
+                active
+                  ? "border-slate-950 bg-slate-950 text-white shadow-[0_14px_32px_rgba(15,23,42,0.14)]"
+                  : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+              }`}
+            >
+              <FontAwesomeIcon icon={option.icon} />
+              <span>{option.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -125,6 +159,7 @@ export default function CompanyEditor({ company, themeSettings, banner, selected
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <ThemeModeField value={themeSettings.mode || "light"} onChange={(value) => onThemeChange("mode", value)} />
         <ColorField label="Primary color" value={themeSettings.primaryColor} onChange={(value) => onThemeChange("primaryColor", value)} />
         <ColorField label="Secondary color" value={themeSettings.secondaryColor} onChange={(value) => onThemeChange("secondaryColor", value)} />
         <ColorField label="Accent color" value={themeSettings.accentColor} onChange={(value) => onThemeChange("accentColor", value)} />
@@ -138,7 +173,7 @@ export default function CompanyEditor({ company, themeSettings, banner, selected
           placeholder="Careers at Northstar"
         />
         <MediaUrlField
-          label="Banner image URL"
+          label="Banner image"
           value={themeSettings.bannerImageUrl}
           onChange={(value) => {
             onThemeChange("bannerImageUrl", value);
@@ -166,7 +201,7 @@ export default function CompanyEditor({ company, themeSettings, banner, selected
           </label>
         </div>
         <MediaUrlField
-          label="Logo image URL"
+          label="Logo image"
           value={themeSettings.logoImageUrl}
           onChange={(value) => onThemeChange("logoImageUrl", value)}
           placeholder="https://..."

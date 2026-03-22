@@ -93,6 +93,10 @@ export async function updateJob(jobId, payload) {
   return response.data;
 }
 
+export async function deleteJob(jobId) {
+  await api.delete(`/jobs/${jobId}`);
+}
+
 export async function fetchPublicCareerPage(slug, filters = {}) {
   const response = await api.get(`/careers/${slug}`, {
     params: {

@@ -1,12 +1,14 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import BrandMark from "../BrandMark";
 
-function BackButton({ onClick }) {
+function BackButton({ onClick, isDark }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex h-11 min-w-11 items-center justify-center rounded-2xl bg-white/92 px-4 text-sm font-medium text-slate-700 shadow-[0_10px_24px_rgba(15,23,42,0.10)] transition hover:bg-white"
+      className={`inline-flex h-11 min-w-11 items-center justify-center rounded-2xl px-4 text-sm font-medium shadow-[0_10px_24px_rgba(15,23,42,0.10)] transition ${
+        isDark ? "bg-slate-900/92 text-slate-100 hover:bg-slate-900" : "bg-white/92 text-slate-700 hover:bg-white"
+      }`}
     >
       <span aria-hidden="true" className="text-lg">&larr;</span>
     </button>
@@ -41,9 +43,9 @@ function SearchIcon() {
   );
 }
 
-function LogoBadge({ companyName, logoText, logoImageUrl, accentColor }) {
+function LogoBadge({ companyName, logoText, logoImageUrl, accentColor, isDark }) {
   return (
-    <div className="flex h-12 min-w-12 items-center justify-center overflow-hidden rounded-2xl bg-white px-3 text-slate-700 shadow-[0_10px_24px_rgba(15,23,42,0.10)]">
+    <div className={`flex h-12 min-w-12 items-center justify-center overflow-hidden rounded-2xl px-3 shadow-[0_10px_24px_rgba(15,23,42,0.10)] ${isDark ? "bg-slate-900 text-slate-100" : "bg-white text-slate-700"}`}>
       {logoImageUrl ? (
         <img src={logoImageUrl} alt={companyName} className="h-9 w-9 rounded-xl object-cover" />
       ) : logoText ? (
@@ -59,26 +61,28 @@ function LogoBadge({ companyName, logoText, logoImageUrl, accentColor }) {
   );
 }
 
-function ActionButton({ onClick }) {
+function ActionButton({ onClick, isDark }) {
   return (
     <button
       type="button"
       aria-label="Want to edit?"
       onClick={onClick}
-      className="inline-flex h-11 items-center justify-center rounded-full bg-slate-950 px-5 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(15,23,42,0.18)] transition hover:-translate-y-0.5 hover:bg-slate-800"
+      className={`inline-flex h-11 items-center justify-center rounded-full px-5 text-sm font-semibold shadow-[0_12px_28px_rgba(15,23,42,0.18)] transition hover:-translate-y-0.5 ${
+        isDark ? "bg-white text-slate-950 hover:bg-slate-100" : "bg-slate-950 text-white hover:bg-slate-800"
+      }`}
     >
       <span>Want to edit?</span>
     </button>
   );
 }
 
-function SectionHeading({ title, meta, delay = 0 }) {
+function SectionHeading({ title, meta, delay = 0, isDark }) {
   return (
     <div className="careers-reveal space-y-2" style={{ animationDelay: `${delay}ms` }}>
       <div className="flex items-center justify-between gap-4">
-        <h2 className="text-[2rem] font-semibold tracking-tight text-slate-950 sm:text-[2.3rem]">{title}</h2>
+        <h2 className={`text-[2rem] font-semibold tracking-tight sm:text-[2.3rem] ${isDark ? "text-slate-100" : "text-slate-950"}`}>{title}</h2>
         {meta ? (
-          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+          <span className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${isDark ? "bg-slate-800 text-slate-300" : "bg-slate-100 text-slate-500"}`}>
             {meta}
           </span>
         ) : null}
@@ -87,7 +91,7 @@ function SectionHeading({ title, meta, delay = 0 }) {
   );
 }
 
-function LifeCarousel({ images }) {
+function LifeCarousel({ images, isDark }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const total = images.length;
 
@@ -111,7 +115,7 @@ function LifeCarousel({ images }) {
 
   if (images.length === 0) {
     return (
-      <div className="careers-reveal rounded-[24px] border border-slate-200/80 bg-slate-50 px-5 py-6 text-sm text-slate-500" style={{ animationDelay: "120ms" }}>
+      <div className={`careers-reveal rounded-[24px] border px-5 py-6 text-sm ${isDark ? "border-slate-800 bg-slate-900 text-slate-300" : "border-slate-200/80 bg-slate-50 text-slate-500"}`} style={{ animationDelay: "120ms" }}>
         Life at company media will appear here.
       </div>
     );
@@ -126,7 +130,7 @@ function LifeCarousel({ images }) {
 
   return (
     <div className="careers-reveal" style={{ animationDelay: "120ms" }}>
-      <div className="relative h-[16rem] overflow-hidden rounded-[30px] bg-[linear-gradient(180deg,#eff4f8_0%,#dbe5ee_100%)] sm:h-[19rem] lg:h-[23rem]">
+      <div className={`relative h-[16rem] overflow-hidden rounded-[30px] ${isDark ? "bg-[linear-gradient(180deg,#0f172a_0%,#1e293b_100%)]" : "bg-[linear-gradient(180deg,#eff4f8_0%,#dbe5ee_100%)]"} sm:h-[19rem] lg:h-[23rem]`}>
         <div className="absolute inset-0 perspective-[1600px]">
           {images.map((imageUrl, index) => {
             const offset = getOffset(index);
@@ -158,7 +162,7 @@ function LifeCarousel({ images }) {
             <button
               type="button"
               onClick={() => setActiveIndex((current) => (current - 1 + total) % total)}
-              className="absolute left-4 top-1/2 z-10 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-700 shadow-[0_12px_30px_rgba(15,23,42,0.15)] transition hover:bg-white"
+              className={`absolute left-4 top-1/2 z-10 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full shadow-[0_12px_30px_rgba(15,23,42,0.15)] transition ${isDark ? "bg-slate-900/90 text-slate-100 hover:bg-slate-900" : "bg-white/90 text-slate-700 hover:bg-white"}`}
               aria-label="Previous image"
             >
               <ChevronIcon direction="left" />
@@ -166,7 +170,7 @@ function LifeCarousel({ images }) {
             <button
               type="button"
               onClick={() => setActiveIndex((current) => (current + 1) % total)}
-              className="absolute right-4 top-1/2 z-10 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-700 shadow-[0_12px_30px_rgba(15,23,42,0.15)] transition hover:bg-white"
+              className={`absolute right-4 top-1/2 z-10 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full shadow-[0_12px_30px_rgba(15,23,42,0.15)] transition ${isDark ? "bg-slate-900/90 text-slate-100 hover:bg-slate-900" : "bg-white/90 text-slate-700 hover:bg-white"}`}
               aria-label="Next image"
             >
               <ChevronIcon />
@@ -183,7 +187,7 @@ function LifeCarousel({ images }) {
               type="button"
               onClick={() => setActiveIndex(index)}
               aria-label={`Go to slide ${index + 1}`}
-              className={`h-2.5 rounded-full transition ${index === activeIndex ? "w-7 bg-slate-950" : "w-2.5 bg-slate-300 hover:bg-slate-400"}`}
+              className={`h-2.5 rounded-full transition ${index === activeIndex ? "w-7 bg-slate-950" : isDark ? "w-2.5 bg-slate-700 hover:bg-slate-600" : "w-2.5 bg-slate-300 hover:bg-slate-400"}`}
             />
           ))}
         </div>
@@ -192,7 +196,7 @@ function LifeCarousel({ images }) {
   );
 }
 
-function RoleGroupScroller({ groups, selectedTitle, onSelect }) {
+function RoleGroupScroller({ groups, selectedTitle, onSelect, isDark }) {
   return (
     <div className="hide-scrollbar careers-reveal flex snap-x gap-4 overflow-x-auto pb-2" style={{ animationDelay: "160ms" }}>
       {groups.map((group) => {
@@ -202,17 +206,19 @@ function RoleGroupScroller({ groups, selectedTitle, onSelect }) {
             key={group.title}
             type="button"
             onClick={() => onSelect(group.title)}
-            className={`w-[15.5rem] shrink-0 snap-start rounded-[22px] border p-4 text-left shadow-[0_14px_34px_rgba(15,23,42,0.08)] transition sm:w-[17rem] ${
+            className={`w-[15.5rem] shrink-0 snap-start rounded-[22px] border p-4 shadow-[0_14px_34px_rgba(15,23,42,0.08)] transition sm:w-[17rem] ${
               active
                 ? "border-slate-950 bg-slate-950 text-white"
-                : "border-slate-200/80 bg-white text-slate-950 hover:border-slate-300"
+                : isDark
+                  ? "border-slate-800 bg-slate-900 text-slate-100 hover:border-slate-700"
+                  : "border-slate-200/80 bg-white text-slate-950 hover:border-slate-300"
             }`}
           >
-            <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${active ? "text-slate-300" : "text-slate-400"}`}>
+            <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${active ? "text-slate-300" : isDark ? "text-slate-500" : "text-slate-400"}`}>
               Role Family
             </p>
             <h3 className="mt-3 text-[1.15rem] font-semibold leading-6 tracking-tight sm:text-[1.25rem]">{group.title}</h3>
-            <p className={`mt-4 text-sm font-medium ${active ? "text-slate-200" : "text-slate-600"}`}>
+            <p className={`mt-4 text-sm font-medium ${active ? "text-slate-200" : isDark ? "text-slate-300" : "text-slate-600"}`}>
               {group.count} {group.count === 1 ? "opening" : "openings"}
             </p>
           </button>
@@ -222,12 +228,19 @@ function RoleGroupScroller({ groups, selectedTitle, onSelect }) {
   );
 }
 
-function RoleFilters({ search, onSearchChange, location, onLocationChange, type, onTypeChange, locations, types, accentColor }) {
+function RoleFilters({ search, onSearchChange, location, onLocationChange, type, onTypeChange, locations, types, accentColor, isDark }) {
+  const inputClasses = isDark
+    ? "border-slate-700/80 bg-slate-900 text-slate-100 placeholder:text-slate-500"
+    : "border-slate-300/80 bg-white text-slate-700 placeholder:text-slate-400";
+  const selectClasses = isDark
+    ? "border-slate-700/80 bg-[linear-gradient(180deg,#0f172a_0%,#162033_100%)] text-slate-100"
+    : "border-slate-300/80 bg-[linear-gradient(180deg,#f8fbfd_0%,#edf3f7_100%)] text-slate-900";
+
   return (
     <div className="careers-reveal grid gap-3" style={{ animationDelay: "180ms" }}>
       <label className="block">
         <span className="sr-only">Search by job title</span>
-        <div className="flex items-center gap-3 rounded-[20px] border border-slate-300/80 bg-white px-3.5 py-3.5 shadow-[0_10px_24px_rgba(15,23,42,0.05)] sm:px-4 sm:py-4">
+        <div className={`flex items-center gap-3 rounded-[20px] border px-3.5 py-3.5 shadow-[0_10px_24px_rgba(15,23,42,0.05)] sm:px-4 sm:py-4 ${inputClasses}`}>
           <div style={{ color: accentColor }}>
             <SearchIcon />
           </div>
@@ -236,7 +249,7 @@ function RoleFilters({ search, onSearchChange, location, onLocationChange, type,
             value={search}
             onChange={(event) => onSearchChange(event.target.value)}
             placeholder="Search by Job Title..."
-            className="min-w-0 flex-1 bg-transparent text-[0.98rem] text-slate-700 outline-none placeholder:text-slate-400 sm:text-[1.05rem]"
+            className="min-w-0 flex-1 bg-transparent text-[0.98rem] outline-none sm:text-[1.05rem]"
           />
         </div>
       </label>
@@ -248,14 +261,14 @@ function RoleFilters({ search, onSearchChange, location, onLocationChange, type,
             <select
               value={location}
               onChange={(event) => onLocationChange(event.target.value)}
-              className="w-full appearance-none rounded-[20px] border border-slate-300/80 bg-[linear-gradient(180deg,#f8fbfd_0%,#edf3f7_100%)] px-4 py-3.5 pr-10 text-[0.98rem] text-slate-900 outline-none sm:rounded-full sm:px-5 sm:py-4 sm:pr-12 sm:text-[1.05rem]"
+              className={`w-full appearance-none rounded-[20px] border px-4 py-3.5 pr-10 text-[0.98rem] outline-none sm:rounded-full sm:px-5 sm:py-4 sm:pr-12 sm:text-[1.05rem] ${selectClasses}`}
             >
               <option value="">Location</option>
               {locations.map((entry) => (
                 <option key={entry} value={entry}>{entry}</option>
               ))}
             </select>
-            <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 sm:right-5"><ChevronIcon /></div>
+            <div className={`pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 sm:right-5 ${isDark ? "text-slate-300" : "text-slate-500"}`}><ChevronIcon /></div>
           </div>
         </label>
 
@@ -265,14 +278,14 @@ function RoleFilters({ search, onSearchChange, location, onLocationChange, type,
             <select
               value={type}
               onChange={(event) => onTypeChange(event.target.value)}
-              className="w-full appearance-none rounded-[20px] border border-slate-300/80 bg-[linear-gradient(180deg,#f8fbfd_0%,#edf3f7_100%)] px-4 py-3.5 pr-10 text-[0.98rem] text-slate-900 outline-none sm:rounded-full sm:px-5 sm:py-4 sm:pr-12 sm:text-[1.05rem]"
+              className={`w-full appearance-none rounded-[20px] border px-4 py-3.5 pr-10 text-[0.98rem] outline-none sm:rounded-full sm:px-5 sm:py-4 sm:pr-12 sm:text-[1.05rem] ${selectClasses}`}
             >
               <option value="">Job Type</option>
               {types.map((entry) => (
                 <option key={entry} value={entry}>{entry}</option>
               ))}
             </select>
-            <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 sm:right-5"><ChevronIcon /></div>
+            <div className={`pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 sm:right-5 ${isDark ? "text-slate-300" : "text-slate-500"}`}><ChevronIcon /></div>
           </div>
         </label>
       </div>
@@ -280,13 +293,13 @@ function RoleFilters({ search, onSearchChange, location, onLocationChange, type,
   );
 }
 
-function JobDetailCard({ job, accentColor }) {
+function JobDetailCard({ job, accentColor, isDark }) {
   return (
-    <article className="rounded-[24px] border border-slate-200/80 bg-white p-5 shadow-[0_14px_34px_rgba(15,23,42,0.08)] sm:p-6">
-      <h3 className="text-[1.28rem] font-semibold leading-[1.2] tracking-tight text-slate-950 sm:text-[1.4rem]">
+    <article className={`rounded-[24px] border p-5 shadow-[0_14px_34px_rgba(15,23,42,0.08)] sm:p-6 ${isDark ? "border-slate-800 bg-slate-900" : "border-slate-200/80 bg-white"}`}>
+      <h3 className={`text-[1.28rem] font-semibold leading-[1.2] tracking-tight sm:text-[1.4rem] ${isDark ? "text-slate-100" : "text-slate-950"}`}>
         {job.title} - {job.type || "Full Time"} - {job.location || "Remote"}
       </h3>
-      <p className="mt-3 text-sm leading-7 text-slate-600 sm:text-[0.95rem]">
+      <p className={`mt-3 text-sm leading-7 sm:text-[0.95rem] ${isDark ? "text-slate-300" : "text-slate-600"}`}>
         {job.summary || "Description and responsibilities for this role will be added shortly."}
       </p>
       <button
@@ -300,7 +313,7 @@ function JobDetailCard({ job, accentColor }) {
   );
 }
 
-function OpenRolesSection({ section, jobs, companyName, accentColor }) {
+function OpenRolesSection({ section, jobs, companyName, accentColor, isDark }) {
   const roleGroups = useMemo(() => {
     const grouped = new Map();
     jobs.forEach((job) => {
@@ -349,31 +362,31 @@ function OpenRolesSection({ section, jobs, companyName, accentColor }) {
 
   return (
     <section>
-      <SectionHeading title={section.title} meta={openRolesLabel} delay={160} />
-      {section.content?.headline ? <p className="careers-reveal mt-3 text-sm leading-7 text-slate-500" style={{ animationDelay: "170ms" }}>{section.content.headline}</p> : null}
+      <SectionHeading title={section.title} meta={openRolesLabel} delay={160} isDark={isDark} />
+      {section.content?.headline ? <p className={`careers-reveal mt-3 text-sm leading-7 ${isDark ? "text-slate-400" : "text-slate-500"}`} style={{ animationDelay: "170ms" }}>{section.content.headline}</p> : null}
       <div className="mt-4 space-y-6 lg:mt-6 lg:space-y-8">
         {roleGroups.length > 0 ? (
           <>
-            <RoleGroupScroller groups={roleGroups} selectedTitle={selectedRoleTitle} onSelect={setSelectedRoleTitle} />
+            <RoleGroupScroller groups={roleGroups} selectedTitle={selectedRoleTitle} onSelect={setSelectedRoleTitle} isDark={isDark} />
             {selectedGroup ? (
-              <div className="rounded-[30px] border border-slate-200/80 bg-[linear-gradient(180deg,#fbfdfe_0%,#f4f8fb_100%)] p-4 shadow-[0_14px_34px_rgba(15,23,42,0.06)] sm:p-5 lg:p-6">
+              <div className={`rounded-[30px] border p-4 shadow-[0_14px_34px_rgba(15,23,42,0.06)] sm:p-5 lg:p-6 ${isDark ? "border-slate-800 bg-[linear-gradient(180deg,#0f172a_0%,#111827_100%)]" : "border-slate-200/80 bg-[linear-gradient(180deg,#fbfdfe_0%,#f4f8fb_100%)]"}`}>
                 <div className="careers-reveal mb-5 flex flex-wrap items-end justify-between gap-4" style={{ animationDelay: "170ms" }}>
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Selected Role</p>
-                    <h3 className="mt-2 text-[1.6rem] font-semibold tracking-tight text-slate-950 sm:text-[1.9rem]">{selectedGroup.title}</h3>
-                    <p className="mt-2 text-sm leading-7 text-slate-600">{selectedGroup.count} {selectedGroup.count === 1 ? "opening" : "openings"} for this role at {companyName}.</p>
+                    <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${isDark ? "text-slate-500" : "text-slate-400"}`}>Selected Role</p>
+                    <h3 className={`mt-2 text-[1.6rem] font-semibold tracking-tight sm:text-[1.9rem] ${isDark ? "text-slate-100" : "text-slate-950"}`}>{selectedGroup.title}</h3>
+                    <p className={`mt-2 text-sm leading-7 ${isDark ? "text-slate-300" : "text-slate-600"}`}>{selectedGroup.count} {selectedGroup.count === 1 ? "opening" : "openings"} for this role at {companyName}.</p>
                   </div>
                 </div>
-                <RoleFilters search={searchValue} onSearchChange={setSearchValue} location={locationFilter} onLocationChange={setLocationFilter} type={typeFilter} onTypeChange={setTypeFilter} locations={availableLocations} types={availableTypes} accentColor={accentColor} />
+                <RoleFilters search={searchValue} onSearchChange={setSearchValue} location={locationFilter} onLocationChange={setLocationFilter} type={typeFilter} onTypeChange={setTypeFilter} locations={availableLocations} types={availableTypes} accentColor={accentColor} isDark={isDark} />
                 <div className="mt-5 grid gap-4 lg:grid-cols-2 xl:grid-cols-1">
                   {filteredSelectedJobs.length > 0 ? filteredSelectedJobs.map((job) => (
-                    <div key={job.id} className="careers-reveal" style={{ animationDelay: "220ms" }}><JobDetailCard job={job} accentColor={accentColor} /></div>
-                  )) : <div className="careers-reveal rounded-[24px] border border-slate-200/80 bg-white px-5 py-6 text-sm text-slate-500" style={{ animationDelay: "220ms" }}>No openings match the current filters.</div>}
+                    <div key={job.id} className="careers-reveal" style={{ animationDelay: "220ms" }}><JobDetailCard job={job} accentColor={accentColor} isDark={isDark} /></div>
+                  )) : <div className={`careers-reveal rounded-[24px] border px-5 py-6 text-sm ${isDark ? "border-slate-800 bg-slate-900 text-slate-300" : "border-slate-200/80 bg-white text-slate-500"}`} style={{ animationDelay: "220ms" }}>No openings match the current filters.</div>}
                 </div>
               </div>
             ) : null}
           </>
-        ) : <div className="careers-reveal rounded-[24px] border border-slate-200/80 bg-slate-50 px-5 py-6 text-sm text-slate-500" style={{ animationDelay: "180ms" }}>No open roles available right now.</div>}
+        ) : <div className={`careers-reveal rounded-[24px] border px-5 py-6 text-sm ${isDark ? "border-slate-800 bg-slate-900 text-slate-300" : "border-slate-200/80 bg-slate-50 text-slate-500"}`} style={{ animationDelay: "180ms" }}>No open roles available right now.</div>}
       </div>
     </section>
   );
@@ -390,19 +403,20 @@ export default function CareersPageView({
   fallbackLifeImages = [],
   onBack
 }) {
+  const isDark = themeSettings?.mode === "dark";
   const accentColor = themeSettings?.accentColor || "#0f766e";
   const primaryColor = themeSettings?.primaryColor || "#0f172a";
   const bannerImage = themeSettings?.bannerImageUrl || banner?.imageUrl || fallbackLifeImages[0] || "";
   const visibleSections = (sections || []).filter((section) => section.isVisible);
 
   return (
-    <div className="w-full max-w-full overflow-x-clip border border-slate-200/80 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.10)]">
+    <div className={`w-full max-w-full overflow-x-clip border shadow-[0_24px_80px_rgba(15,23,42,0.10)] ${isDark ? "border-slate-800 bg-slate-950" : "border-slate-200/80 bg-white"}`}>
       <div className="flex items-center justify-between gap-4 px-5 pb-5 pt-5 sm:px-6 sm:pt-6 lg:px-8">
         <div className="flex min-w-0 items-center gap-4">
-          {onBack ? <BackButton onClick={onBack} /> : null}
-          <LogoBadge companyName={companyName} logoText={themeSettings?.logoText} logoImageUrl={themeSettings?.logoImageUrl} accentColor={accentColor} />
+          {onBack ? <BackButton onClick={onBack} isDark={isDark} /> : null}
+          <LogoBadge companyName={companyName} logoText={themeSettings?.logoText} logoImageUrl={themeSettings?.logoImageUrl} accentColor={accentColor} isDark={isDark} />
         </div>
-        {showEdit ? <ActionButton onClick={onEdit} /> : null}
+        {showEdit ? <ActionButton onClick={onEdit} isDark={isDark} /> : null}
       </div>
 
       <section
@@ -422,13 +436,13 @@ export default function CareersPageView({
         </div>
       </section>
 
-      <div className="min-w-0 space-y-10 px-5 py-8 sm:px-6 sm:py-10 lg:space-y-14 lg:px-8 lg:py-12">
+      <div className={`min-w-0 space-y-10 px-5 py-8 sm:px-6 sm:py-10 lg:space-y-14 lg:px-8 lg:py-12 ${isDark ? "bg-slate-950" : "bg-white"}`}>
         {visibleSections.map((section, index) => {
           if (section.type === "about_us") {
             return (
               <section key={section.id}>
-                <SectionHeading title={section.title} delay={80 + index * 20} />
-                <p className="careers-reveal mt-4 max-w-5xl text-[1.02rem] leading-8 text-slate-600 sm:text-[1.08rem] lg:text-[1.12rem] lg:leading-9" style={{ animationDelay: `${100 + index * 20}ms` }}>
+                <SectionHeading title={section.title} delay={80 + index * 20} isDark={isDark} />
+                <p className={`careers-reveal mt-4 max-w-5xl text-[1.02rem] leading-8 sm:text-[1.08rem] lg:text-[1.12rem] lg:leading-9 ${isDark ? "text-slate-300" : "text-slate-600"}`} style={{ animationDelay: `${100 + index * 20}ms` }}>
                   {section.content?.body || "Tell candidates what makes your company worth joining."}
                 </p>
               </section>
@@ -439,21 +453,21 @@ export default function CareersPageView({
             const lifeImages = Array.isArray(section.content?.items) && section.content.items.length > 0 ? section.content.items : fallbackLifeImages;
             return (
               <section key={section.id}>
-                <SectionHeading title={section.title} delay={120 + index * 20} />
-                {section.content?.headline ? <p className="careers-reveal mt-3 text-sm leading-7 text-slate-500" style={{ animationDelay: `${130 + index * 20}ms` }}>{section.content.headline}</p> : null}
-                <div className="mt-4 lg:mt-6"><LifeCarousel images={lifeImages} /></div>
+                <SectionHeading title={section.title} delay={120 + index * 20} isDark={isDark} />
+                {section.content?.headline ? <p className={`careers-reveal mt-3 text-sm leading-7 ${isDark ? "text-slate-400" : "text-slate-500"}`} style={{ animationDelay: `${130 + index * 20}ms` }}>{section.content.headline}</p> : null}
+                <div className="mt-4 lg:mt-6"><LifeCarousel images={lifeImages} isDark={isDark} /></div>
               </section>
             );
           }
 
           if (section.type === "open_roles") {
-            return <OpenRolesSection key={section.id} section={section} jobs={jobs} companyName={companyName} accentColor={accentColor} />;
+            return <OpenRolesSection key={section.id} section={section} jobs={jobs} companyName={companyName} accentColor={accentColor} isDark={isDark} />;
           }
 
           return (
             <section key={section.id}>
-              <SectionHeading title={section.title} delay={140 + index * 20} />
-              <p className="careers-reveal mt-4 max-w-5xl text-[1.02rem] leading-8 text-slate-600 sm:text-[1.08rem] lg:text-[1.12rem] lg:leading-9" style={{ animationDelay: `${160 + index * 20}ms` }}>
+              <SectionHeading title={section.title} delay={140 + index * 20} isDark={isDark} />
+              <p className={`careers-reveal mt-4 max-w-5xl text-[1.02rem] leading-8 sm:text-[1.08rem] lg:text-[1.12rem] lg:leading-9 ${isDark ? "text-slate-300" : "text-slate-600"}`} style={{ animationDelay: `${160 + index * 20}ms` }}>
                 {section.content?.body || "Add custom content for this section."}
               </p>
             </section>
